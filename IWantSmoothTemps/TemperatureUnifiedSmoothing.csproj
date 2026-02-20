@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>TemperatureUnifiedSmoothing</AssemblyName>
+    <RootNamespace>TemperatureUnifiedSmoothing</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+
+    <!-- Mod packaging: keep in sync with modinfo.json -->
+    <ModId>iwantsmoothtemperature</ModId>
+    <ModVersion>1.1.5</ModVersion>
+  </PropertyGroup>
+
+  <!-- Game DLL references -->
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(VINTAGE_STORY)\VintagestoryAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VSSurvivalMod">
+      <HintPath>$(VINTAGE_STORY)\Mods\VSSurvivalMod.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>$(VINTAGE_STORY)\VintagestoryLib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(VINTAGE_STORY)\Lib\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Package mod as zip after build -->
+  <Target Name="PackageMod" AfterTargets="Build">
+    <PropertyGroup>
+      <_StagingDir>$(IntermediateOutputPath)modpackage</_StagingDir>
+      <_ZipPath>$(ProjectDir)Releases/$(ModId)_$(ModVersion).zip</_ZipPath>
+    </PropertyGroup>
+
+    <RemoveDir Directories="$(_StagingDir)" />
+    <MakeDir Directories="$(_StagingDir);$(ProjectDir)Releases" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_StagingDir)" />
+    <Copy SourceFiles="$(ProjectDir)modinfo.json" DestinationFolder="$(_StagingDir)" />
+    <ZipDirectory SourceDirectory="$(_StagingDir)" DestinationFile="$(_ZipPath)" Overwrite="true" />
+    <RemoveDir Directories="$(_StagingDir)" />
+
+    <Message Text="Packaged mod: $(_ZipPath)" Importance="high" />
+  </Target>
+
+</Project>
