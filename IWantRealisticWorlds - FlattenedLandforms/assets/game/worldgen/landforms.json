@@ -1,0 +1,570 @@
+{
+	code: "landforms",
+	"variants":
+	[
+		{
+			"code":  "largeislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 12,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "realisticflatlands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "realisticmountains-ledged",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "realisticmountains-quintupleledged",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},	
+		{
+			"code":  "steppedsinkholes",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#AAAA00",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+				{
+					"code":  "steppedsinkhold-cavemut",
+					// Smooth gentle rolling terrain (placeholder for future features)
+					"chance": 0.15,
+					"hexcolor": "#AAAA00",
+						"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+						"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+					}
+			]
+		},
+		{
+			"code":  "islandchess",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 3,
+			"minTemp": -4,
+			"minRain": 120,
+			"useClimateMap": true,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "needledflatlands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "Realistic mountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "siberiansinkholes",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#AAAA00",
+			"weight": 3,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "shallowmillionstepmountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#333333",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "mediummillionstepmountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#333333",
+			"weight": 1,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "tallmillionstepmountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#333333",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "roughflatlands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#333333",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "roughlabyrinth",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#A9810F",
+			"weight": 16,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+		},
+		{
+			"code":  "supersmoothills",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#333333",
+			"weight": 0.5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},	
+		{
+			"code":  "largelake",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#0000FF",
+			"weight": 2,
+			"minTemp": 0,
+			"maxTemp": 50,
+			"useClimateMap": true,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},	
+		{
+			"code":  "cold glaciers",
+			"hexcolor": "#000099",
+			"weight": 20000,
+			"minTemp": -20,
+			"maxTemp": -19.5,
+			"useClimateMap": true,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+		},	
+		{
+			"code":  "cold mountain range",
+			"hexcolor": "#000099",
+			"weight": 1000,
+			"minTemp": -20,
+			"maxTemp": -19.5,
+			"useClimateMap": true,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "humongous mountain, cavernless",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 1.5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+				{
+					"chance": 0.33,
+					"code":  "humongous mountain with caverns",
+					"hexcolor": "#79E02E",
+					"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+					"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+				}
+			]
+		},
+		{
+			"code":  "hillplateu",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 0.5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "smallshallowislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 7,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "shallowislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 12,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "cliffy rolling hills",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 0.5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "superflatrarebumps",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 15,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "veryflat",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 16,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "elevatedveryflat",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79002E",
+			"weight": 10,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "flatmanybumps",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+					{
+						"chance": 0.3,
+						"code":  "rollinghillssubstract",
+						"hexcolor": "#79E02E",
+						"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+						"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+					}
+			]
+		},
+		{
+			"code":  "veryflatmanybumps",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 3,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+					{
+						"chance": 0.3,
+						"code":  "rollinghillssubstract",
+						"hexcolor": "#79E02E",
+						"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+						"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+					}
+			]
+		},
+		{
+			"code":  "above sealevel flat grasslands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "rollinghills",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 2,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "lowrollinghills",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 10,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+					{
+						"chance": 0.15,
+						"code":  "rollinghillssubstract",
+						"hexcolor": "#79E02E",
+						"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+						"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+					}
+			]
+		},
+		{
+			"code":  "cliffislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 3,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+				{
+					"chance": 0.4,
+					"code":  "sharp cliff islands",
+					"hexcolor": "#79E02E",
+					"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+				}
+			]
+		},
+		{
+			"code":  "smallcliffislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 6,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "crbumplands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 13,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "roundclifflandshilly",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "sparsecliffyswamplands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 6,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "densecliffyswamplands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#5BC184",
+			"weight": 5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "deep water step mountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 1,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+		},
+		{
+			"code":  "step mountains",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 1,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+		},
+		{
+			"code":  "flathillvalley",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 12,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "hillsflatsandislands",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "smallsealevelplateus",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#84A878",
+			"weight": 10,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+		},
+		{
+			"code":  "mediumseapillars",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 3,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+				{
+					"chance": 0.25,
+					"code":  "mediumseapillarswatery",
+					// Smooth gentle rolling terrain (placeholder for future features)
+					"hexcolor": "#79E02E",
+					"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+					"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+				}
+			]
+		},
+		{
+			"code":  "mediumlandpillars",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 4,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "marsh",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 13,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "bumpy marsh",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 5,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "flatmarsh",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 16,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000]
+		},
+		{
+			"code":  "deathmarsh",
+			// Smooth gentle rolling terrain (placeholder for future features)
+			"hexcolor": "#79E02E",
+			"weight": 3,
+			"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+			"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+			"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+			"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+			"mutations": [
+				{
+					"chance": 0.5,
+					"code":  "deathmarsh hill",
+					"hexcolor": "#79E02E",
+		
+					"terrainOctaves":          [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0],
+					"terrainOctaveThresholds": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+					"terrainYKeyPositions":    [0.410, 0.435, 0.460],
+					"terrainYKeyThresholds":   [1.000, 0.800, 0.000],
+				}
+			]
+		},
+	]
+}

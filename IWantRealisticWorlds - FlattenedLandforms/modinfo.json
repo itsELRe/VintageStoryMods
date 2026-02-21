@@ -1,0 +1,12 @@
+{
+  "type": "content",
+  "modid": "iwrwflattenedlandforms",
+  "name": "IWRW - Flattened Landforms",
+  "version": "1.0.0-dev.1",
+  "description": "Replaces all vanilla landforms with flat variants so IWRW features are the sole terrain source",
+  "authors": [ "ELRe" ],
+  "dependencies": {
+    "game": "1.21.0"
+  },
+  "side": "Server"
+}

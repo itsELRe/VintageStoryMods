@@ -1,0 +1,14 @@
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\bin\Release\net8.0\assets\game\worldgen\landforms.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\bin\Release\net8.0\modinfo.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\bin\Release\net8.0\FlattenedLandforms.deps.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\bin\Release\net8.0\FlattenedLandforms.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\bin\Release\net8.0\FlattenedLandforms.pdb
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.AssemblyInfoInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.AssemblyInfo.cs
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.csproj.CoreCompileInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.sourcelink.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\refint\FlattenedLandforms.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\FlattenedLandforms.pdb
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\FlattenedLandforms\obj\Release\net8.0\ref\FlattenedLandforms.dll
