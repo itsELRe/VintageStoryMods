@@ -1,0 +1,14 @@
+{
+  "type": "code",
+  "modid": "iwantrealisticworlds",
+  "name": "IWRW - Core",
+  "authors": [
+    "ELRe"
+  ],
+  "description": "Feature-based terrain generation system for realistic worlds.",
+  "version": "1.0.0-dev",
+  "dependencies": {
+    "game": "1.21.0"
+  },
+  "side": "Universal"
+}

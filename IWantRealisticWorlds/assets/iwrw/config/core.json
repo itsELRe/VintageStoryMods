@@ -1,0 +1,22 @@
+{
+  // Global height cap. 0.88 = 88% of world height (e.g. Y=225 in 256-high world)
+  "globalHeightLimit": 0.88,
+
+  // Footprint scale - scales surface area, not radius.
+  // 2.0 = 200% area = radius * sqrt(2) ~ 1.41x larger
+  "footprintScaleMultiplier": 1.0,
+
+  // % of zones that spawn ANY feature. 50 = half zones get features.
+  "globalLandformDensity": 50,
+
+  // Zone grid: plateSize = generation unit, zoneSize = one feature per zone max
+  "plateSize": 8000,
+  "zoneSize": 512,
+  "searchRadius": 1500,
+
+  // Relative spawn rates. Higher = more of that type.
+  // Auto-populated when addons register. You can override values here.
+  "featureWeights": {},
+
+  "debugLogging": false
+}
