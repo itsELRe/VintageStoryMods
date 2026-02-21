@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>IWantRealisticWorlds</AssemblyName>
     <RootNamespace>IWantRealisticWorlds</RootNamespace>
-    <Version>1.0.0-dev</Version>
+    <Version>1.0.0-dev.1</Version>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
