@@ -1,0 +1,1219 @@
+<!--
+  Terrain Feature Visualizer — Ridge Network (Space Colonization)
+
+  This tool visualizes terrain features as a heightfield grid where
+  each cell = 1 in-game block. Use it to prototype terrain generation
+  algorithms before implementing them as game addons.
+
+  PIPELINE OVERVIEW (maps to sidebar sections):
+    1. Attractors  — Scatter guide points in an ellipse
+    2. Seeds       — Place starting positions with territory assignment
+    3. Growth      — Space colonization algorithm grows branches
+    4. Shaping     — Prune short branches, smooth chains/heights
+    5. Height      — Compute per-node height from flow + cone profiles
+    6. Terrain     — Build heightfield grid (BFS flood-fill from ridges)
+    7. Noise       — Add falloff noise, plateau cut, smoothing
+
+  TO ADAPT FOR OTHER FEATURES:
+    - Replace steps 1-3 with your own point generation (e.g. river paths, crater rings)
+    - Step 5 (height profile) is where you define the cross-section shape
+    - Step 6 (terrain) converts your feature into a heightfield grid
+    - The Display section and rendering code can be reused as-is
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ridge Network — Space Colonization</title>
+<style>
+  :root{--bg:#0f1117;--surface:#181b24;--border:#2a2e3a;--text:#c8ccd8;--text-dim:#6b7084;--accent:#4a9eff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;}
+  .sidebar{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+  .sidebar h1{font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);padding:20px 20px 4px;}
+  .sidebar p{font-size:12px;color:var(--text-dim);padding:0 20px 16px;border-bottom:1px solid var(--border);}
+  .controls{padding:16px 20px;flex:1;}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 10px;}
+  .section-label:first-child{margin-top:0;}
+  .cr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cr label{font-size:12px;flex-shrink:0;}
+  .cr .r{display:flex;align-items:center;gap:6px;}
+  input[type="range"]{width:90px;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+  input[type="number"]{width:48px;font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:2px 4px;text-align:right;outline:none;-moz-appearance:textfield;}
+  input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  input[type="number"]:focus{border-color:var(--accent);}
+  button{font-size:11px;font-weight:500;padding:8px 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;flex:1;}
+  button:hover{background:var(--border);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-row{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .cbr{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .cbr input[type="checkbox"]{accent-color:var(--accent);}
+  .cbr label{font-size:12px;cursor:pointer;}
+  .canvas-wrap{flex:1;position:relative;overflow:hidden;}
+  canvas{display:block;width:100%;height:100%;}
+  .info{position:absolute;bottom:16px;left:16px;font-size:10px;color:var(--text-dim);background:rgba(15,17,23,0.85);padding:8px 12px;border-radius:4px;border:1px solid var(--border);}
+  .view-tabs{display:flex;gap:4px;margin-bottom:12px;}
+  .view-tabs button{padding:5px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;}
+  .view-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h1>Ridge Network</h1>
+  <p>Space colonization with terrain heightfield</p>
+  <div class="controls">
+    <!-- STEP 1: Attractor cloud — guide points that branches grow toward -->
+    <div class="section-label" style="color:#4a9eff">1. Attractors</div>
+    <div class="cr"><label>World Height</label><div class="r"><input type="range" id="worldHeight" min="128" max="512" value="256" step="64"><input type="number" id="worldHeight_n" value="256"></div></div>
+    <div class="cr"><label>Count</label><div class="r"><input type="range" id="attractorCount" min="50" max="800" value="300" step="25"><input type="number" id="attractorCount_n" value="300"></div></div>
+    <div class="cr"><label>Width</label><div class="r"><input type="range" id="cloudWidth" min="200" max="1500" value="800" step="50"><input type="number" id="cloudWidth_n" value="800"></div></div>
+    <div class="cr"><label>Length</label><div class="r"><input type="range" id="cloudHeight" min="200" max="1500" value="800" step="50"><input type="number" id="cloudHeight_n" value="800"></div></div>
+
+    <!-- STEP 2: Seeds — starting positions, territories, and borders -->
+    <div class="section-label" style="color:#5aafcf">2. Seeds</div>
+    <div class="cr"><label>Count</label><div class="r"><input type="range" id="seedCount" min="1" max="5" value="1" step="1"><input type="number" id="seedCount_n" value="1"></div></div>
+    <div class="cr"><label>Min Distance</label><div class="r"><input type="range" id="seedMinDist" min="0" max="400" value="100" step="10"><input type="number" id="seedMinDist_n" value="100"></div></div>
+    <div class="cr"><label>Border Width</label><div class="r"><input type="range" id="seedBorder" min="0" max="200" value="30" step="5"><input type="number" id="seedBorder_n" value="30"></div></div>
+    <div class="cr"><label>Max Spread</label><div class="r"><input type="range" id="seedMaxSpread" min="50" max="800" value="400" step="25"><input type="number" id="seedMaxSpread_n" value="400"></div></div>
+
+    <!-- STEP 3: Growth — space colonization algorithm parameters -->
+    <div class="section-label" style="color:#3db88c">3. Growth</div>
+    <div class="cr"><label>Step Size</label><div class="r"><input type="range" id="stepSize" min="5" max="60" value="20" step="1"><input type="number" id="stepSize_n" value="20"></div></div>
+    <div class="cr"><label>Kill Distance</label><div class="r"><input type="range" id="killDist" min="5" max="80" value="30" step="1"><input type="number" id="killDist_n" value="30"></div></div>
+    <div class="cr"><label>Influence Radius</label><div class="r"><input type="range" id="influenceRadius" min="50" max="500" value="200" step="10"><input type="number" id="influenceRadius_n" value="200"></div></div>
+    <div class="cr"><label>Max Iterations</label><div class="r"><input type="range" id="maxIter" min="50" max="500" value="200" step="10"><input type="number" id="maxIter_n" value="200"></div></div>
+    <div class="cr"><label>Random Wobble</label><div class="r"><input type="range" id="wobble" min="0" max="0.5" value="0.10" step="0.02"><input type="number" id="wobble_n" value="0.10" step="0.02"></div></div>
+    <div class="cr"><label>Outward Bias</label><div class="r"><input type="range" id="outwardBias" min="0" max="1.0" value="0.35" step="0.05"><input type="number" id="outwardBias_n" value="0.35" step="0.05"></div></div>
+    <div class="cr"><label>Branch Coherence</label><div class="r"><input type="range" id="branchCoherence" min="0" max="1.0" value="0.30" step="0.05"><input type="number" id="branchCoherence_n" value="0.30" step="0.05"></div></div>
+
+    <!-- STEP 4: Shaping — prune short branches, smooth positions and heights -->
+    <div class="section-label" style="color:#7dc88c">4. Shaping</div>
+    <div class="cr"><label>Min Branch Len</label><div class="r"><input type="range" id="minBranchLen" min="0" max="10" value="3" step="1"><input type="number" id="minBranchLen_n" value="3"></div></div>
+    <div class="cr"><label>Chain Smooth</label><div class="r"><input type="range" id="chainSmooth" min="0" max="10" value="3" step="1"><input type="number" id="chainSmooth_n" value="3"></div></div>
+    <div class="cr"><label>Ridge Smoothing</label><div class="r"><input type="range" id="ridgeSmooth" min="0" max="10" value="2" step="1"><input type="number" id="ridgeSmooth_n" value="2"></div></div>
+
+    <!-- STEP 5: Height — per-node height from flow counts + cone profiles -->
+    <div class="section-label" style="color:#d4a44a">5. Height</div>
+    <div class="cr"><label>Peak Height %</label><div class="r"><input type="range" id="peakHeight" min="0.05" max="0.80" value="0.47" step="0.01"><input type="number" id="peakHeight_n" value="0.47" step="0.01"></div></div>
+    <div class="cr"><label>Local Cone</label><div class="r"><input type="range" id="localCone" min="0" max="1.0" value="0.70" step="0.05"><input type="number" id="localCone_n" value="0.70" step="0.05"></div></div>
+    <div class="cr"><label>Global Cone</label><div class="r"><input type="range" id="globalCone" min="0" max="1.0" value="0" step="0.05"><input type="number" id="globalCone_n" value="0" step="0.05"></div></div>
+
+    <!-- STEP 6: Terrain — heightfield grid generation (BFS flood-fill from ridges) -->
+    <div class="section-label" style="color:#cf8a3a">6. Terrain</div>
+    <div class="cr"><label>Falloff Dist</label><div class="r"><input type="range" id="falloffDist" min="20" max="400" value="150" step="5"><input type="number" id="falloffDist_n" value="150"></div></div>
+    <div class="cr"><label>Ridge Width</label><div class="r"><input type="range" id="ridgeWidth" min="0.2" max="3.0" value="1.0" step="0.1"><input type="number" id="ridgeWidth_n" value="1.0" step="0.1"></div></div>
+    <div class="cr"><label>Drainage Bias</label><div class="r"><input type="range" id="drainageBias" min="0" max="1.0" value="0" step="0.05"><input type="number" id="drainageBias_n" value="0" step="0.05"></div></div>
+    <div class="cr"><label>Smooth Passes</label><div class="r"><input type="range" id="smoothPasses" min="0" max="5" value="1" step="1"><input type="number" id="smoothPasses_n" value="1"></div></div>
+
+    <!-- STEP 7: Noise — falloff shaping, noise detail, plateau cut -->
+    <div class="section-label" style="color:#c45a4a">7. Noise</div>
+    <div class="cr"><label>Log Falloff</label><div class="r"><input type="range" id="logFalloff" min="0" max="3.0" value="0.5" step="0.1"><input type="number" id="logFalloff_n" value="0.5" step="0.1"></div></div>
+    <div class="cr"><label>Falloff Noise</label><div class="r"><input type="range" id="falloffNoise" min="0" max="0.5" value="0" step="0.02"><input type="number" id="falloffNoise_n" value="0" step="0.02"></div></div>
+    <div class="cr"><label>Noise Scale</label><div class="r"><input type="range" id="falloffNoiseScale" min="5" max="200" value="60" step="5"><input type="number" id="falloffNoiseScale_n" value="60"></div></div>
+    <div class="cr"><label>Noise Octaves</label><div class="r"><input type="range" id="falloffNoiseOct" min="1" max="6" value="3" step="1"><input type="number" id="falloffNoiseOct_n" value="3"></div></div>
+    <div class="cr"><label>Falloff Smooth</label><div class="r"><input type="range" id="falloffSmooth" min="0" max="10" value="0" step="1"><input type="number" id="falloffSmooth_n" value="0"></div></div>
+    <div class="cr"><label>Plateau Cut</label><div class="r"><input type="range" id="plateauCut" min="0" max="0.8" value="0.08" step="0.02"><input type="number" id="plateauCut_n" value="0.08" step="0.02"></div></div>
+
+    <!-- DISPLAY: Visualization-only controls (no effect on simulation data) -->
+    <div class="section-label" style="color:#888">Display</div>
+    <div class="view-tabs">
+      <button id="viewLines" class="active" onclick="setView('lines')">Lines</button>
+      <button id="viewHeight" onclick="setView('height')">Height</button>
+      <button id="viewContour" onclick="setView('contour')">Contour</button>
+      <button id="viewShaded" onclick="setView('shaded')">Shaded</button>
+    </div>
+    <div class="cr"><label>Line Width</label><div class="r"><input type="range" id="lineWidth" min="1" max="8" value="2.5" step="0.5"><input type="number" id="lineWidth_n" value="2.5" step="0.5"></div></div>
+    <div class="cr"><label>Contour Interval</label><div class="r"><input type="range" id="contourInterval" min="2" max="30" value="8" step="1"><input type="number" id="contourInterval_n" value="8"></div></div>
+    <div class="cbr"><input type="checkbox" id="showAttractors"><label for="showAttractors">Show attractors</label></div>
+    <div class="cbr"><input type="checkbox" id="showNodes"><label for="showNodes">Show nodes</label></div>
+    <div class="cbr"><input type="checkbox" id="overlayLines"><label for="overlayLines">Overlay ridge lines</label></div>
+    <div class="btn-row"><button class="primary" onclick="regenerate()">Regenerate</button><button onclick="resetView()">Reset View</button></div>
+  </div>
+</div>
+<div class="canvas-wrap">
+  <canvas id="cv"></canvas>
+  <div class="info" id="info">-</div>
+</div>
+
+<script>
+class Rng{constructor(s){this.s=s|0||1;}next(){this.s=(this.s*1664525+1013904223)&0x7fffffff;return this.s/0x7fffffff;}range(a,b){return a+this.next()*(b-a);}}
+
+const STORAGE_KEY = 'ridgeNetwork_settings';
+let state=null, seed=Date.now(), currentView='lines', heightGrid=null;
+let viewZoom=1, viewPanX=0, viewPanY=0, isDragging=false, dragStartX=0, dragStartY=0;
+
+// Throttled recompute: caches segment spatial grid between terrain slider changes,
+// only recomputes height values. RAF-gated so at most one recompute per frame.
+let terrainRAF=null, genTimer=null, cachedSegData=null;
+const SG_CELL = 64; // spatial grid cell size (matches C# CELL_SIZE=64)
+const GRID_RES = 4; // blocks per height-grid cell (matches C# GRID_RES=4)
+
+function regenerate(){seed=(Math.random()*0x7fffffff)|0;generate();}
+function gv(id){return parseFloat(document.getElementById(id).value);}
+
+function saveSettings(){
+  const settings = {};
+  document.querySelectorAll('input[type="range"]').forEach(s => {
+    settings[s.id] = parseFloat(s.value);
+  });
+  document.querySelectorAll('input[type="checkbox"]').forEach(s => {
+    settings[s.id] = s.checked;
+  });
+  settings._view = currentView;
+  settings._seed = seed;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch(e){}
+}
+
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const settings = JSON.parse(raw);
+    document.querySelectorAll('input[type="range"]').forEach(s => {
+      if(settings[s.id] !== undefined){
+        s.value = settings[s.id];
+        syncSliderToNumber(s);
+      }
+    });
+    document.querySelectorAll('input[type="checkbox"]').forEach(s => {
+      if(settings[s.id] !== undefined) s.checked = settings[s.id];
+    });
+    if(settings._view) currentView = settings._view;
+    if(settings._seed) seed = settings._seed;
+    document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+    const btn = document.getElementById('view'+currentView.charAt(0).toUpperCase()+currentView.slice(1));
+    if(btn) btn.classList.add('active');
+  } catch(e){}
+}
+
+function syncSliderToNumber(slider){
+  const numInput = document.getElementById(slider.id + '_n');
+  if(numInput){
+    const v = parseFloat(slider.value);
+    numInput.value = Number.isInteger(v) && !slider.step.includes('.') ? v : v.toFixed(2);
+  }
+}
+
+function syncNumberToSlider(numInput){
+  const sliderId = numInput.id.replace('_n','');
+  const slider = document.getElementById(sliderId);
+  if(slider){
+    slider.value = numInput.value;
+  }
+}
+
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view'+v.charAt(0).toUpperCase()+v.slice(1)).classList.add('active');
+  if(v!=='lines' && state && !heightGrid) computeHeightGrid();
+  draw();
+  saveSettings();
+}
+
+// ============================================================
+// GENERATE — runs the full simulation pipeline (steps 1-5)
+// Produces: node tree, chains, segments, node heights
+// To adapt for other features, replace steps 1-3 with your
+// own point generation and keep steps 4-5 for height output.
+// ============================================================
+function generate(){
+  heightGrid = null;
+  cachedSegData = null;
+  const rng = new Rng(seed);
+
+  // Read all UI parameters
+  const nAttractors = gv('attractorCount')|0;
+  const cloudW = gv('cloudWidth'), cloudH = gv('cloudHeight');
+  const stepSize = gv('stepSize'), killDist = gv('killDist');
+  const influenceR = gv('influenceRadius'), maxIter = gv('maxIter')|0;
+  const seedCount = gv('seedCount')|0, wobble = gv('wobble');
+  const outwardBias = gv('outwardBias');
+  const coherenceThreshold = gv('branchCoherence');
+  const minBranchLen = gv('minBranchLen')|0;
+  const seedMinDist = gv('seedMinDist'), seedMinDistSq = seedMinDist*seedMinDist;
+  const seedBorder = gv('seedBorder');
+  const seedMaxSpread = gv('seedMaxSpread'), seedMaxSpreadSq = seedMaxSpread*seedMaxSpread;
+  const falloffDist = gv('falloffDist');
+  const boundW = Math.max(stepSize*3, cloudW/2 - falloffDist*0.6);
+  const boundH = Math.max(stepSize*3, cloudH/2 - falloffDist*0.6);
+
+  // --- STEP 1: ATTRACTORS ---
+  // Scatter guide points in an ellipse. Branches grow toward these.
+  // CUSTOMIZE: Replace with any point distribution for your feature.
+  const attractors = [];
+  for(let i=0; i<nAttractors; i++){
+    let ax, az;
+    do { ax = rng.next()*2-1; az = rng.next()*2-1; } while(ax*ax+az*az>1);
+    attractors.push({x: ax*cloudW/2, z: az*cloudH/2, alive: true, owner: 0});
+  }
+
+  // --- STEP 2: SEEDS ---
+  // Place starting positions randomly. Each seed spawns an independent
+  // branch network. Attractors are assigned to the nearest seed;
+  // those in the border zone become deflectors that repel branches.
+  // CUSTOMIZE: Replace with your own seed placement logic. (random placement with margin to prevent border clipping)
+  const nodes = [];
+  const placeW = Math.max(1, boundW - seedMaxSpread*0.3);
+  const placeH = Math.max(1, boundH - seedMaxSpread*0.3);
+  for(let s=0; s<seedCount; s++){
+    let sx, sz;
+    for(let attempt=0; attempt<200; attempt++){
+      let ax, az;
+      do { ax=rng.next()*2-1; az=rng.next()*2-1; } while(ax*ax+az*az>1);
+      sx=ax*placeW; sz=az*placeH;
+      let ok=true;
+      for(let j=0; j<nodes.length; j++){
+        const dx=sx-nodes[j].x, dz=sz-nodes[j].z;
+        if(dx*dx+dz*dz<seedMinDistSq){ok=false; break;}
+      }
+      if(ok) break;
+    }
+    nodes.push({x:sx, z:sz, parent:-1, dirX:0, dirZ:0, rootIdx:s});
+  }
+
+  // 2b. Assign attractors to seeds (border zone → deflectors)
+  if(seedCount > 1){
+    for(const a of attractors){
+      let d1=Infinity, d2=Infinity, s1=-1;
+      for(let s=0; s<seedCount; s++){
+        const dx=a.x-nodes[s].x, dz=a.z-nodes[s].z;
+        const d=Math.sqrt(dx*dx+dz*dz);
+        if(d<d1){ d2=d1; d1=d; s1=s; }
+        else if(d<d2){ d2=d; }
+      }
+      a.owner = (d2-d1 < seedBorder) ? -1 : s1;
+    }
+  }
+
+  // --- STEP 3: GROWTH (space colonization) ---
+  // Each iteration: attractors pull nearest same-seed node toward them,
+  // deflectors push nearest node away. New nodes are spawned in the
+  // averaged direction, subject to anti-reversal, coherence, and max spread.
+  // CUSTOMIZE: Replace with any branching/path algorithm.
+  const separationR = stepSize * 2.5, separationRSq = separationR*separationR, separationStrength = 0.6;
+  const killDistSq = killDist*killDist, influenceRSq = influenceR*influenceR;
+
+  for(let iter=0; iter<maxIter; iter++){
+    const nodeInfluence = new Map();
+    let anyAssignedAlive = false;
+    for(let ai=0; ai<attractors.length; ai++){
+      const a = attractors[ai];
+      if(!a.alive) continue;
+      if(a.owner === -1){
+        // Deflector: find nearest node of any seed, push away (not killable)
+        let bestIdx=-1, bestDistSq=Infinity;
+        for(let ni=0; ni<nodes.length; ni++){
+          const dx=a.x-nodes[ni].x, dz=a.z-nodes[ni].z, dsq=dx*dx+dz*dz;
+          if(dsq<bestDistSq){bestDistSq=dsq; bestIdx=ni;}
+        }
+        if(bestIdx<0 || bestDistSq>influenceRSq) continue;
+        const dx=a.x-nodes[bestIdx].x, dz=a.z-nodes[bestIdx].z;
+        const len=Math.sqrt(dx*dx+dz*dz);
+        if(len<0.001)continue;
+        if(!nodeInfluence.has(bestIdx)) nodeInfluence.set(bestIdx,{dx:0,dz:0,count:0});
+        const inf=nodeInfluence.get(bestIdx);
+        inf.dx-=dx/len; inf.dz-=dz/len; inf.count++;
+      } else {
+        // Assigned: find nearest node of same seed only
+        anyAssignedAlive = true;
+        let bestIdx=-1, bestDistSq=Infinity;
+        for(let ni=0; ni<nodes.length; ni++){
+          if(nodes[ni].rootIdx !== a.owner) continue;
+          const dx=a.x-nodes[ni].x, dz=a.z-nodes[ni].z, dsq=dx*dx+dz*dz;
+          if(dsq<bestDistSq){bestDistSq=dsq; bestIdx=ni;}
+        }
+        if(bestIdx<0 || bestDistSq>influenceRSq) continue;
+        if(bestDistSq<killDistSq){a.alive=false; continue;}
+        const dx=a.x-nodes[bestIdx].x, dz=a.z-nodes[bestIdx].z;
+        const len=Math.sqrt(dx*dx+dz*dz);
+        if(len<0.001)continue;
+        if(!nodeInfluence.has(bestIdx)) nodeInfluence.set(bestIdx,{dx:0,dz:0,count:0});
+        const inf=nodeInfluence.get(bestIdx);
+        inf.dx+=dx/len; inf.dz+=dz/len; inf.count++;
+      }
+    }
+    if(!anyAssignedAlive) break;
+
+    const newNodes = [];
+    for(const [ni, inf] of nodeInfluence){
+      if(inf.count===0) continue;
+      let dx=inf.dx/inf.count, dz=inf.dz/inf.count;
+      const n_ob=nodes[ni], root_ob=nodes[n_ob.rootIdx];
+      const fromRX=n_ob.x-root_ob.x, fromRZ=n_ob.z-root_ob.z;
+      const fromRLen=Math.sqrt(fromRX*fromRX+fromRZ*fromRZ);
+      if(fromRLen>0.01&&outwardBias>0){dx+=(fromRX/fromRLen)*outwardBias;dz+=(fromRZ/fromRLen)*outwardBias;}
+      let sepX=0,sepZ=0;
+      for(let j=0;j<nodes.length;j++){
+        if(j===ni||nodes[j].parent===ni||nodes[ni].parent===j)continue;
+        const ddx=nodes[ni].x-nodes[j].x, ddz=nodes[ni].z-nodes[j].z, dsq=ddx*ddx+ddz*ddz;
+        if(dsq<separationRSq&&dsq>0.01){const d=Math.sqrt(dsq);sepX+=(ddx/d)*(1-d/separationR);sepZ+=(ddz/d)*(1-d/separationR);}
+      }
+      dx+=sepX*separationStrength; dz+=sepZ*separationStrength;
+      dx+=(rng.next()*2-1)*wobble; dz+=(rng.next()*2-1)*wobble;
+      const len=Math.sqrt(dx*dx+dz*dz);
+      if(len<0.001)continue;
+      const ndx=dx/len, ndz=dz/len;
+      const n=nodes[ni];
+      const root=nodes[n.rootIdx];
+      if(n.parent>=0){
+        const inLen=Math.sqrt(n.dirX*n.dirX+n.dirZ*n.dirZ);
+        if(inLen>0.01){if((n.dirX/inLen)*ndx+(n.dirZ/inLen)*ndz<-0.17) continue;}
+      }
+      const toRX=n.x-root.x, toRZ=n.z-root.z;
+      const toRLenSq=toRX*toRX+toRZ*toRZ;
+      if(toRLenSq > seedMaxSpreadSq) continue;
+      if(coherenceThreshold>0 && toRLenSq>stepSize*stepSize*9){
+        const toRLen=Math.sqrt(toRLenSq);
+        const coherence=(toRX/toRLen)*ndx+(toRZ/toRLen)*ndz;
+        if(coherence<coherenceThreshold*2-1) continue;
+      }
+      const nx=n.x+ndx*stepSize, nz=n.z+ndz*stepSize;
+      // Cloud boundary: keep ridges inside with room for falloff
+      const enx=nx/boundW, enz=nz/boundH;
+      if(enx*enx+enz*enz>1) continue;
+      // Inter-seed collision: reject if too close to a node from another seed
+      let blocked=false;
+      for(let j=0;j<nodes.length;j++){
+        if(j===ni)continue;
+        const ddx=nx-nodes[j].x, ddz=nz-nodes[j].z, dsq=ddx*ddx+ddz*ddz;
+        if(dsq<(stepSize*0.5)**2){blocked=true;break;}
+        if(nodes[j].rootIdx!==n.rootIdx && dsq<seedBorder*seedBorder){blocked=true;break;}
+      }
+      if(!blocked) newNodes.push({x:nx,z:nz,parent:ni,dirX:ndx,dirZ:ndz,rootIdx:n.rootIdx});
+    }
+    for(const n of newNodes) nodes.push(n);
+    if(newNodes.length===0&&nodeInfluence.size===0) break;
+  }
+
+  // --- STEP 4a: PRUNE short branches ---
+  const children = new Array(nodes.length).fill(null).map(()=>[]);
+  for(let i=0;i<nodes.length;i++){if(nodes[i].parent>=0)children[nodes[i].parent].push(i);}
+  if(minBranchLen>0){
+    let pruned=true;
+    while(pruned){pruned=false;
+      for(let i=0;i<nodes.length;i++){
+        if(nodes[i]===null||children[i].length>0)continue;
+        let chainLen=1,cur=i;
+        while(true){const p=nodes[cur].parent;if(p<0||children[p].length>1)break;chainLen++;cur=p;}
+        if(chainLen<minBranchLen&&nodes[i].parent>=0){const p=nodes[i].parent;children[p]=children[p].filter(c=>c!==i);nodes[i]=null;pruned=true;}
+      }
+    }
+  }
+
+  // --- STEP 4b: Compact node array ---
+  const validMap=new Int32Array(nodes.length).fill(-1);
+  const validNodes=[];
+  for(let i=0;i<nodes.length;i++){if(nodes[i]!==null){validMap[i]=validNodes.length;validNodes.push(nodes[i]);}}
+  for(const n of validNodes){if(n.parent>=0)n.parent=validMap[n.parent];}
+
+  // --- STEP 4c: Flow counts (downstream child count per node) ---
+  const childrenFinal=new Array(validNodes.length).fill(null).map(()=>[]);
+  for(let i=0;i<validNodes.length;i++){if(validNodes[i].parent>=0)childrenFinal[validNodes[i].parent].push(i);}
+  const childCount=new Int32Array(validNodes.length);
+  for(let i=validNodes.length-1;i>=0;i--){childCount[i]+=1;if(validNodes[i].parent>=0)childCount[validNodes[i].parent]+=childCount[i];}
+
+  // --- STEP 5: HEIGHT PROFILE ---
+  // Each node gets a height from flow count + cone profiles.
+  // Local cone: dome centered on each seed root (per-mountain shape).
+  // Global cone: dome centered on world origin (landscape-scale).
+  // CUSTOMIZE: Replace with your own height profile (e.g. crater rim, river bed).
+  const maxFlow=Math.max(1,...childCount);
+  const localConeStr=gv('localCone');
+  const globalConeStr=gv('globalCone');
+  const seedRoots=[];
+  const maxSeedR=new Float32Array(seedCount);
+  for(let s=0; s<seedCount; s++){
+    for(let i=0; i<validNodes.length; i++){
+      if(validNodes[i].rootIdx===s && validNodes[i].parent<0){
+        seedRoots[s]={x:validNodes[i].x, z:validNodes[i].z}; break;
+      }
+    }
+    if(!seedRoots[s]) seedRoots[s]={x:0,z:0};
+  }
+  for(let i=0; i<validNodes.length; i++){
+    const n=validNodes[i], root=seedRoots[n.rootIdx];
+    const dx=n.x-root.x, dz=n.z-root.z;
+    const r=Math.sqrt(dx*dx+dz*dz);
+    if(r>maxSeedR[n.rootIdx]) maxSeedR[n.rootIdx]=r;
+  }
+  for(let s=0;s<seedCount;s++){if(maxSeedR[s]<1)maxSeedR[s]=1;}
+  let maxNodeR=0;
+  for(const n of validNodes){const r=Math.sqrt(n.x*n.x+n.z*n.z);if(r>maxNodeR)maxNodeR=r;}
+  if(maxNodeR<1)maxNodeR=1;
+
+  const nodeHeight=new Float32Array(validNodes.length);
+  for(let i=0;i<validNodes.length;i++){
+    const n=validNodes[i], root=seedRoots[n.rootIdx];
+    const flowFrac=Math.pow(childCount[i]/maxFlow, 0.45);
+    const ldx=n.x-root.x, ldz=n.z-root.z;
+    const localRFrac=Math.min(1, Math.sqrt(ldx*ldx+ldz*ldz)/maxSeedR[n.rootIdx]);
+    const localCone=Math.pow(Math.max(0, 1-localRFrac*localRFrac), 1.5) * localConeStr;
+    const gr=Math.sqrt(n.x*n.x+n.z*n.z);
+    const globalRFrac=Math.min(1, gr/maxNodeR);
+    const globalCone=Math.pow(Math.max(0, 1-globalRFrac*globalRFrac), 1.5) * globalConeStr;
+    const coneVal=Math.max(localCone, globalCone);
+    nodeHeight[i]=coneVal+flowFrac*(1.0-coneVal);
+  }
+
+  // --- STEP 4d: Smooth node heights along chains ---
+  const ridgeSmoothPasses = gv('ridgeSmooth')|0;
+  for(let pass=0; pass<ridgeSmoothPasses; pass++){
+    const newH = new Float32Array(nodeHeight);
+    for(let i=0; i<validNodes.length; i++){
+      let sum = nodeHeight[i], cnt = 1;
+      const p = validNodes[i].parent;
+      if(p >= 0){ sum += nodeHeight[p]; cnt++; }
+      for(const c of childrenFinal[i]){ sum += nodeHeight[c]; cnt++; }
+      newH[i] = sum / cnt;
+    }
+    nodeHeight.set(newH);
+  }
+
+  // --- STEP 4d-prep: Extract chains ---
+  const chains=[], visited=new Uint8Array(validNodes.length);
+  function traceChains(ni){
+    for(const kid of childrenFinal[ni]){
+      const chain=[ni,kid]; visited[kid]=1; let cur=kid;
+      while(childrenFinal[cur].length===1){cur=childrenFinal[cur][0];chain.push(cur);visited[cur]=1;}
+      chains.push(chain);
+      if(childrenFinal[cur].length>1) traceChains(cur);
+    }
+  }
+  for(let i=0;i<validNodes.length;i++){if(validNodes[i].parent<0&&!visited[i]){visited[i]=1;traceChains(i);}}
+
+  // --- STEP 4e: Smooth chain positions (flow-weighted Laplacian) ---
+  const chainSmoothPasses = gv('chainSmooth')|0;
+  if(chainSmoothPasses > 0){
+    const fixed = new Uint8Array(validNodes.length);
+    for(let i=0;i<validNodes.length;i++){
+      if(validNodes[i].parent<0 || childrenFinal[i].length!==1) fixed[i]=1;
+    }
+    for(let pass=0; pass<chainSmoothPasses; pass++){
+      const ox=new Float32Array(validNodes.length), oz=new Float32Array(validNodes.length);
+      for(let i=0;i<validNodes.length;i++){ox[i]=validNodes[i].x; oz[i]=validNodes[i].z;}
+      for(const chain of chains){
+        for(let ci=1; ci<chain.length-1; ci++){
+          const ni=chain[ci];
+          if(fixed[ni]) continue;
+          const flowRatio = childCount[ni] / maxFlow;
+          const alpha = 0.5 * (1.0 - Math.pow(flowRatio, 0.3));
+          const pi=chain[ci-1], qi=chain[ci+1];
+          validNodes[ni].x = ox[ni] + alpha*((ox[pi]+ox[qi])/2 - ox[ni]);
+          validNodes[ni].z = oz[ni] + alpha*((oz[pi]+oz[qi])/2 - oz[ni]);
+        }
+      }
+    }
+  }
+
+  // --- Catmull-Rom segments for terrain rendering ---
+  const segments=[];
+  for(const chain of chains){
+    if(chain.length<2)continue;
+    const chainRoot=validNodes[chain[0]].rootIdx;
+    const pts=chain.map(i=>({x:validNodes[i].x,z:validNodes[i].z,h:nodeHeight[i]}));
+    if(chain.length<3){
+      for(let i=0;i<pts.length-1;i++) segments.push({x0:pts[i].x,z0:pts[i].z,h0:pts[i].h,x1:pts[i+1].x,z1:pts[i+1].z,h1:pts[i+1].h,rootIdx:chainRoot});
+    } else {
+      const p0Ph={x:2*pts[0].x-pts[1].x,z:2*pts[0].z-pts[1].z,h:pts[0].h};
+      const pNPh={x:2*pts[pts.length-1].x-pts[pts.length-2].x,z:2*pts[pts.length-1].z-pts[pts.length-2].z,h:pts[pts.length-1].h};
+      const allPts=[p0Ph,...pts,pNPh];
+      const SUB=4;
+      for(let i=0;i<allPts.length-3;i++){
+        const A=allPts[i],B=allPts[i+1],C=allPts[i+2],D=allPts[i+3];
+        for(let s=0;s<SUB;s++){
+          const t0=s/SUB, t1=(s+1)/SUB;
+          const [x0,z0]=catmullRom(A.x,A.z,B.x,B.z,C.x,C.z,D.x,D.z,t0);
+          const [x1,z1]=catmullRom(A.x,A.z,B.x,B.z,C.x,C.z,D.x,D.z,t1);
+          segments.push({x0,z0,h0:B.h+(C.h-B.h)*t0, x1,z1,h1:B.h+(C.h-B.h)*t1,rootIdx:chainRoot});
+        }
+      }
+    }
+  }
+
+  state={nodes:validNodes,chains,attractors,childCount,children:childrenFinal,maxChildren:maxFlow,nodeHeight,segments,stepSize,seedRoots,maxSeedR,seedCount,maxNodeR};
+  document.getElementById('info').textContent=`Nodes: ${validNodes.length} | Chains: ${chains.length} | Segments: ${segments.length} | maxNodeH: ${Math.max(...nodeHeight).toFixed(3)}`;
+  if(currentView!=='lines') computeHeightGrid();
+  draw();
+  saveSettings();
+}
+
+function catmullRom(p0x,p0z,p1x,p1z,p2x,p2z,p3x,p3z,t){
+  const t2=t*t, t3=t2*t;
+  return [
+    0.5*((2*p1x)+(-p0x+p2x)*t+(2*p0x-5*p1x+4*p2x-p3x)*t2+(-p0x+3*p1x-3*p2x+p3x)*t3),
+    0.5*((2*p1z)+(-p0z+p2z)*t+(2*p0z-5*p1z+4*p2z-p3z)*t2+(-p0z+3*p1z-3*p2z+p3z)*t3)
+  ];
+}
+
+function hash2d(x,y){
+  let h=(x*374761393+y*668265263)^0x5bf03635;
+  h=((h^(h>>>13))*1274126177)&0x7fffffff;
+  return h/0x7fffffff;
+}
+
+function plateauNoise(gx,gz,scale){
+  const fx=gx/scale,fz=gz/scale;
+  const ix=Math.floor(fx),iz=Math.floor(fz);
+  const tx=fx-ix,tz=fz-iz;
+  const st=tx*tx*(3-2*tx),sz=tz*tz*(3-2*tz);
+  return lerp(lerp(hash2d(ix,iz),hash2d(ix+1,iz),st),lerp(hash2d(ix,iz+1),hash2d(ix+1,iz+1),st),sz);
+}
+
+function fractalNoise2d(x,z,octaves,scale){
+  let sum=0,amp=1,s=scale,totalAmp=0;
+  for(let o=0;o<octaves;o++){
+    sum+=amp*(plateauNoise(x+o*1337,z+o*2971,s)*2-1);
+    totalAmp+=amp; amp*=0.5; s*=0.5;
+  }
+  return sum/totalAmp;
+}
+
+// ============================================================
+// COMPUTE HEIGHTFIELD — converts ridge segments into a 2D grid
+// of height values (steps 6-7). Each cell = 1 in-game block.
+// CUSTOMIZE: Replace BFS with distance-based MAX for smoother
+// ridge junctions, or swap in your own heightfield algorithm.
+// ============================================================
+// Build or reuse cached segment spatial grid data.
+// Segments don't change when terrain sliders move, only params do.
+function buildSegCache(segments, falloff, ridgeW, stepSize){
+  const halfW = ridgeW * stepSize * 0.5;
+  const maxReachBase = falloff + halfW;
+
+  let mnX=Infinity,mxX=-Infinity,mnZ=Infinity,mxZ=-Infinity;
+  for(const s of segments){
+    mnX=Math.min(mnX,s.x0,s.x1);mxX=Math.max(mxX,s.x0,s.x1);
+    mnZ=Math.min(mnZ,s.z0,s.z1);mxZ=Math.max(mxZ,s.z0,s.z1);
+  }
+  // Padding = full falloff + ridge half-width (matches C# ComputeBounds).
+  const pad = maxReachBase;
+  mnX=Math.floor(mnX-pad); mxX=Math.ceil(mxX+pad);
+  mnZ=Math.floor(mnZ-pad); mxZ=Math.ceil(mxZ+pad);
+
+  const rangeX=mxX-mnX, rangeZ=mxZ-mnZ;
+  // Grid dimensions: match C# exactly (boundsMax-boundsMin)/GRID_RES + 2
+  const gw=Math.floor(rangeX/GRID_RES)+2;
+  const gh=Math.floor(rangeZ/GRID_RES)+2;
+  const cellW=GRID_RES, cellH=GRID_RES;
+
+  // Build spatial grid for fast segment lookup
+  const sgOX = mnX, sgOZ = mnZ;
+  const sgW = Math.max(1, Math.ceil((mxX - mnX) / SG_CELL) + 1);
+  const sgH = Math.max(1, Math.ceil((mxZ - mnZ) / SG_CELL) + 1);
+  const sgCells = new Array(sgW * sgH);
+  for(let i=0;i<sgCells.length;i++) sgCells[i]=[];
+
+  // Precompute per-segment direction/length
+  const segDx=new Float64Array(segments.length);
+  const segDz=new Float64Array(segments.length);
+  const segLenSq=new Float64Array(segments.length);
+  for(let si=0;si<segments.length;si++){
+    const s=segments[si];
+    const dx=s.x1-s.x0, dz=s.z1-s.z0;
+    segDx[si]=dx; segDz[si]=dz; segLenSq[si]=dx*dx+dz*dz;
+    const sMinX=Math.min(s.x0,s.x1)-maxReachBase;
+    const sMaxX=Math.max(s.x0,s.x1)+maxReachBase;
+    const sMinZ=Math.min(s.z0,s.z1)-maxReachBase;
+    const sMaxZ=Math.max(s.z0,s.z1)+maxReachBase;
+    const cx0=Math.max(0,((sMinX-sgOX)/SG_CELL)|0);
+    const cx1=Math.min(sgW-1,((sMaxX-sgOX)/SG_CELL)|0);
+    const cz0=Math.max(0,((sMinZ-sgOZ)/SG_CELL)|0);
+    const cz1=Math.min(sgH-1,((sMaxZ-sgOZ)/SG_CELL)|0);
+    for(let gx=cx0;gx<=cx1;gx++)
+      for(let gz=cz0;gz<=cz1;gz++)
+        sgCells[gx+gz*sgW].push(si);
+  }
+
+  return {mnX,mxX,mnZ,mxZ,rangeX,rangeZ,gw,gh,cellW,cellH,
+    sgOX,sgOZ,sgW,sgH,sgCells,segDx,segDz,segLenSq,halfW,maxReachBase,
+    falloff,ridgeW};
+}
+
+function computeHeightGrid(){
+  if(!state) return;
+  const {segments,seedRoots,maxSeedR,seedCount,maxNodeR}=state;
+  const seaLvl=Math.floor(gv('worldHeight')*0.4313725490196078);
+  const peakH=(gv('worldHeight')-seaLvl)*gv('peakHeight'), falloff=gv('falloffDist');
+  const plateauCut=gv('plateauCut'), smoothN=gv('smoothPasses')|0;
+  const ridgeW=gv('ridgeWidth'), drainBias=gv('drainageBias');
+  const logFalloffStr=gv('logFalloff');
+  const falloffNoiseStr=gv('falloffNoise');
+  const falloffNoiseScl=gv('falloffNoiseScale');
+  const falloffNoiseOct=gv('falloffNoiseOct')|0;
+  const falloffSmoothN=gv('falloffSmooth')|0;
+  const localConeStr=gv('localCone'), globalConeStr=gv('globalCone');
+
+  // Rebuild spatial cache only when geometry-affecting params change
+  if(!cachedSegData || cachedSegData.falloff!==falloff ||
+     cachedSegData.ridgeW!==ridgeW){
+    cachedSegData = buildSegCache(segments, falloff, ridgeW, state.stepSize);
+  }
+  const {mnX,mnZ,rangeX,rangeZ,gw,gh,cellW,cellH,
+    sgOX,sgOZ,sgW,sgH,sgCells,segDx,segDz,segLenSq,halfW} = cachedSegData;
+
+  const dropPerWorldUnit = peakH / falloff;
+
+  const grid=new Float32Array(gw*gh);
+
+  // --- STEP 6: Per-segment analytical falloff (matches C# RidgeFeature.ComputeHeightAt) ---
+
+  for(let gz=0;gz<gh;gz++){
+    const wz=mnZ+gz*GRID_RES;
+    for(let gx=0;gx<gw;gx++){
+      const wx=mnX+gx*GRID_RES;
+      const idx=gz*gw+gx;
+
+      // Spatial grid lookup
+      const scx=((wx-sgOX)/SG_CELL)|0, scz=((wz-sgOZ)/SG_CELL)|0;
+      if(scx<0||scx>=sgW||scz<0||scz>=sgH) continue;
+      const cellSegs=sgCells[scx+scz*sgW];
+      if(cellSegs.length===0) continue;
+
+      // Global cone (once per point)
+      let globalCone=0;
+      if(globalConeStr>0 && maxNodeR>1){
+        const gDist=Math.sqrt(wx*wx+wz*wz);
+        const grFrac=Math.min(1, gDist/maxNodeR);
+        const gv=Math.max(0, 1-grFrac*grFrac);
+        globalCone=gv*Math.sqrt(gv)*globalConeStr;
+      }
+
+      // Local cone cache
+      let cachedLocalCone=0, cachedRootIdx=-1;
+
+      let bestH=0;
+      for(let ci=0;ci<cellSegs.length;ci++){
+        const si=cellSegs[ci];
+        const seg=segments[si];
+        const dxS=segDx[si], dzS=segDz[si], lenSq=segLenSq[si];
+
+        // Project point onto segment
+        let t=0;
+        if(lenSq>0.001){
+          t=((wx-seg.x0)*dxS+(wz-seg.z0)*dzS)/lenSq;
+          if(t<0) t=0; else if(t>1) t=1;
+        }
+        const cpx=seg.x0+dxS*t, cpz=seg.z0+dzS*t;
+        const dx=wx-cpx, dz=wz-cpz;
+        const distSq=dx*dx+dz*dz;
+
+        const hFrac=seg.h0+(seg.h1-seg.h0)*t;
+        const segHalfW=halfW*(0.3+0.7*(1-hFrac));
+        const maxReach=falloff+segHalfW;
+        if(distSq>maxReach*maxReach) continue;
+
+        const dist=Math.sqrt(distSq);
+        const effDist=dist>segHalfW?dist-segHalfW:0;
+        let drop=effDist*dropPerWorldUnit;
+
+        // Per-segment local cone (cached per rootIdx)
+        let localCone=0;
+        if(localConeStr>0 && seedRoots){
+          const ri=seg.rootIdx;
+          if(ri===cachedRootIdx){
+            localCone=cachedLocalCone;
+          } else if(ri>=0 && seedRoots[ri] && maxSeedR[ri]>1){
+            const rdx=wx-seedRoots[ri].x, rdz=wz-seedRoots[ri].z;
+            const lrFrac=Math.min(1, Math.sqrt(rdx*rdx+rdz*rdz)/maxSeedR[ri]);
+            const lv=Math.max(0, 1-lrFrac*lrFrac);
+            localCone=lv*Math.sqrt(lv)*localConeStr;
+            cachedLocalCone=localCone;
+            cachedRootIdx=ri;
+          }
+        }
+        const coneVal=Math.max(localCone, globalCone);
+
+        if(coneVal>0){
+          const hAtPoint=hFrac*peakH-drop;
+          const heightFrac=hAtPoint>0?Math.sqrt(hAtPoint/peakH):0;
+          drop*=(1-coneVal*0.6*heightFrac);
+        }
+
+        if(drainBias>0){
+          drop+=drainBias*(effDist>0?dropPerWorldUnit:0)*(1-coneVal);
+        }
+
+        let h=hFrac*peakH-drop;
+
+        // LogFalloff per-segment (matches C# exactly)
+        if(h>0 && logFalloffStr>0){
+          const maxH=hFrac*peakH;
+          if(maxH>0){
+            const frac=h/maxH;
+            h=maxH*Math.pow(frac, 1+logFalloffStr);
+          }
+        }
+
+        if(h>bestH) bestH=h;
+      }
+
+      grid[idx]=bestH;
+    }
+  }
+
+  // --- STEP 7a: Fractal noise in falloff zone ---
+  // Uses feature-relative world coords (wx, wz) so noise is identical to C#.
+  // The HTML feature is centered at (0,0), so wx IS the feature-relative position.
+  if(falloffNoiseStr>0){
+    for(let gz=0;gz<gh;gz++){
+      const wz=mnZ+gz*GRID_RES;
+      for(let gx=0;gx<gw;gx++){
+        const idx=gz*gw+gx;
+        const h=grid[idx];
+        if(h<=0) continue;
+        const ridgeFrac=h/peakH;
+        const falloffFrac=1-ridgeFrac;
+        const noiseWeight=Math.pow(falloffFrac, 0.7);
+        const edgeTaper=Math.min(1, h/(peakH*0.05));
+        const wx=mnX+gx*GRID_RES;
+        const n=fractalNoise2d(wx,wz,falloffNoiseOct,falloffNoiseScl);
+        grid[idx]=Math.max(0, h + n * noiseWeight * edgeTaper * falloffNoiseStr * peakH);
+      }
+    }
+  }
+
+  // --- STEP 7b: Falloff zone smoothing ---
+  if(falloffSmoothN>0){
+    const ftmp=new Float32Array(gw*gh);
+    for(let pass=0;pass<falloffSmoothN;pass++){
+      for(let gz=0;gz<gh;gz++){
+        for(let gx=0;gx<gw;gx++){
+          const idx=gz*gw+gx;
+          const h=grid[idx];
+          const ridgeFrac=Math.min(1, h/peakH);
+          const sw=Math.pow(1-ridgeFrac, 0.5);
+          let sum=0,cnt=0;
+          for(let dz=-1;dz<=1;dz++){
+            const zz=gz+dz;
+            if(zz<0||zz>=gh) continue;
+            for(let dx=-1;dx<=1;dx++){
+              const xx=gx+dx;
+              if(xx<0||xx>=gw) continue;
+              sum+=grid[zz*gw+xx]; cnt++;
+            }
+          }
+          ftmp[idx]=h+(sum/cnt-h)*sw;
+        }
+      }
+      grid.set(ftmp);
+    }
+  }
+
+  // --- STEP 7c: Plateau cut ---
+  // Uses feature-relative world coords, scale = featureExtent/40 (matching C#).
+  if(plateauCut>0){
+    const cutHeight=peakH*(1-plateauCut);
+    const noiseAmp=plateauCut*peakH*0.15;
+    const ridgeFollowAmp=plateauCut*peakH*0.25;
+    const cutRange=peakH-cutHeight;
+    const plateauScale=Math.max(16, (gw*GRID_RES+gh*GRID_RES)/2/40);
+    for(let i=0;i<gw*gh;i++){
+      if(grid[i]>cutHeight){
+        const origH=grid[i];
+        const gz=(i/gw)|0, gx=i%gw;
+        const wx=mnX+gx*GRID_RES;
+        const wz=mnZ+gz*GRID_RES;
+        const n=plateauNoise(wx/plateauScale,wz/plateauScale,1);
+        const ridgeFrac=Math.min(1, (origH-cutHeight)/cutRange);
+        grid[i]=cutHeight + n*noiseAmp + ridgeFrac*ridgeFollowAmp;
+      }
+    }
+  }
+
+  // --- STEP 7d: Grid smoothing ---
+  if(smoothN>0){
+    const tmp=new Float32Array(gw*gh);
+    for(let pass=0;pass<smoothN;pass++){
+      for(let gz=0;gz<gh;gz++){
+        for(let gx=0;gx<gw;gx++){
+          let sum=0,cnt=0;
+          for(let dz=-1;dz<=1;dz++){
+            const zz=gz+dz;
+            if(zz<0||zz>=gh) continue;
+            for(let dx=-1;dx<=1;dx++){
+              const xx=gx+dx;
+              if(xx<0||xx>=gw) continue;
+              sum+=grid[zz*gw+xx]; cnt++;
+            }
+          }
+          tmp[gz*gw+gx]=sum/cnt;
+        }
+      }
+      grid.set(tmp);
+    }
+  }
+
+  // Compute actual grid max for debug display
+  let actualMax=0;
+  for(let i=0;i<grid.length;i++) if(grid[i]>actualMax) actualMax=grid[i];
+
+  heightGrid={grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW,cellH,maxH:peakH,actualMax};
+
+  // Update info with grid stats
+  const info=document.getElementById('info');
+  if(info && state){
+    const base=info.textContent.split(' | gridMax')[0]; // strip old suffix
+    const wh=gv('worldHeight');
+    info.textContent=base+` | gridMax: ${actualMax.toFixed(1)} / ${peakH.toFixed(0)} | peakY: ${(seaLvl+actualMax).toFixed(0)} / ${wh} | seaLevel: ${seaLvl} | grid: ${gw}x${gh}`;
+  }
+}
+
+function heightColor(h,maxH){
+  const t=Math.min(1,h/maxH);
+  if(t<0.01)return[0,0,0];
+  if(t<0.25){const f=t/0.25;return[lerp(30,90,f),lerp(60,100,f),lerp(20,40,f)];}
+  if(t<0.55){const f=(t-0.25)/0.3;return[lerp(90,160,f),lerp(100,130,f),lerp(40,60,f)];}
+  if(t<0.8){const f=(t-0.55)/0.25;return[lerp(160,200,f),lerp(130,180,f),lerp(60,140,f)];}
+  const f=(t-0.8)/0.2;return[lerp(200,255,f),lerp(180,252,f),lerp(140,250,f)];
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function draw(){
+  if(!state) return;
+  const cv=document.getElementById('cv');
+  const rect=cv.parentElement.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  cv.width=rect.width*dpr; cv.height=rect.height*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=rect.width, H=rect.height;
+  ctx.fillStyle='#0f1117'; ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(viewPanX, viewPanY);
+  ctx.scale(viewZoom, viewZoom);
+  if(currentView==='lines') drawLines(ctx,W,H);
+  else drawTerrain(ctx,W,H);
+  ctx.restore();
+  // Zoom HUD
+  if(viewZoom!==1||viewPanX!==0||viewPanY!==0){
+    ctx.fillStyle='rgba(15,17,23,0.85)';ctx.strokeStyle='#2a2e3a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(W-130,12,118,26,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#6b7084';ctx.font='11px "Segoe UI",sans-serif';ctx.textAlign='right';
+    ctx.fillText(`${Math.round(viewZoom*100)}%  ·  dbl-click reset`,W-18,30);
+  }
+  // Block scale bar
+  drawScaleBar(ctx,W,H);
+}
+
+function drawScaleBar(ctx,W,H){
+  if(!state) return;
+  // Compute pixels per block for the current view
+  let ppb;
+  if(currentView==='lines'){
+    const {scale}=getTransform(W,H);
+    ppb=scale*viewZoom;
+  } else if(heightGrid){
+    const {gw,rangeX}=heightGrid;
+    const aspect=gw/heightGrid.gh;
+    let drawW;
+    if(W/H>aspect) drawW=H*aspect;
+    else drawW=W;
+    ppb=(drawW/rangeX)*viewZoom;
+  } else return;
+
+  const segBlocks=100, numSegs=5;
+  const segPx=segBlocks*ppb;
+  const totalPx=numSegs*segPx;
+
+  // Position: bottom-right with margin
+  const margin=20, barH=8;
+  const barX=W-margin-totalPx;
+  const barY=H-margin-barH-14; // 14px room for labels
+
+  // Background pill
+  ctx.fillStyle='rgba(15,17,23,0.85)';
+  ctx.strokeStyle='#2a2e3a'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.roundRect(barX-8, barY-14, totalPx+16, barH+30, 4);
+  ctx.fill(); ctx.stroke();
+
+  // Draw alternating segments
+  for(let i=0;i<numSegs;i++){
+    const x=barX+i*segPx;
+    ctx.fillStyle=i%2===0?'#c8ccd8':'#4a4e5a';
+    ctx.fillRect(x, barY, segPx, barH);
+  }
+  // Border around full bar
+  ctx.strokeStyle='#6b7084'; ctx.lineWidth=0.5;
+  ctx.strokeRect(barX, barY, totalPx, barH);
+
+  // Labels at each 100-block mark
+  ctx.fillStyle='#6b7084';
+  ctx.font='9px "Segoe UI",sans-serif';
+  ctx.textAlign='center';
+  for(let i=0;i<=numSegs;i++){
+    const x=barX+i*segPx;
+    const label=i*segBlocks;
+    ctx.fillText(label+'', x, barY+barH+10);
+  }
+}
+
+function getTransform(W,H){
+  const {nodes}=state;
+  let mnX=Infinity,mxX=-Infinity,mnZ=Infinity,mxZ=-Infinity;
+  for(const n of nodes){mnX=Math.min(mnX,n.x);mxX=Math.max(mxX,n.x);mnZ=Math.min(mnZ,n.z);mxZ=Math.max(mxZ,n.z);}
+  const pad=Math.max(mxX-mnX,mxZ-mnZ)*0.08+20;
+  mnX-=pad;mxX+=pad;mnZ-=pad;mxZ+=pad;
+  const rx=mxX-mnX,rz=mxZ-mnZ;
+  const scale=Math.min((W-20)/rx,(H-20)/rz);
+  const offX=(W-rx*scale)/2-mnX*scale, offZ=(H-rz*scale)/2-mnZ*scale;
+  return{scale,offX,offZ,tx:v=>v*scale+offX,tz:v=>v*scale+offZ};
+}
+
+function drawLines(ctx,W,H){
+  const {nodes,chains,attractors,childCount,maxChildren}=state;
+  const baseWidth=gv('lineWidth');
+  const showAttr=document.getElementById('showAttractors').checked;
+  const showN=document.getElementById('showNodes').checked;
+  const {tx,tz}=getTransform(W,H);
+
+  if(showAttr){for(const a of attractors){ctx.beginPath();ctx.arc(tx(a.x),tz(a.z),2,0,Math.PI*2);ctx.fillStyle=a.owner===-1?'rgba(255,100,50,0.4)':a.alive?'rgba(100,100,255,0.3)':'rgba(50,50,50,0.15)';ctx.fill();}}
+
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const CS=6;
+  for(const chain of chains){
+    if(chain.length<2)continue;
+    const wS=baseWidth*(0.3+0.7*Math.pow(childCount[chain[0]]/maxChildren,0.4));
+    const wE=baseWidth*(0.3+0.7*Math.pow(childCount[chain[chain.length-1]]/maxChildren,0.4));
+    if(chain.length<3){
+      for(let i=0;i<chain.length-1;i++){
+        const na=nodes[chain[i]],nb=nodes[chain[i+1]],frac=i/Math.max(1,chain.length-1);
+        ctx.beginPath();ctx.moveTo(tx(na.x),tz(na.z));ctx.lineTo(tx(nb.x),tz(nb.z));
+        ctx.strokeStyle='#dd2222';ctx.lineWidth=wS+(wE-wS)*frac;ctx.stroke();
+      }
+    } else {
+      const pts=chain.map(i=>({x:nodes[i].x,z:nodes[i].z}));
+      const p0P={x:2*pts[0].x-pts[1].x,z:2*pts[0].z-pts[1].z};
+      const pNP={x:2*pts[pts.length-1].x-pts[pts.length-2].x,z:2*pts[pts.length-1].z-pts[pts.length-2].z};
+      const all=[p0P,...pts,pNP]; const tot=(all.length-3)*CS; let si=0;
+      for(let i=0;i<all.length-3;i++){
+        const p0=all[i],p1=all[i+1],p2=all[i+2],p3=all[i+3];
+        for(let s=0;s<CS;s++){
+          const [x0,z0]=catmullRom(p0.x,p0.z,p1.x,p1.z,p2.x,p2.z,p3.x,p3.z,s/CS);
+          const [x1,z1]=catmullRom(p0.x,p0.z,p1.x,p1.z,p2.x,p2.z,p3.x,p3.z,(s+1)/CS);
+          const frac=tot>0?si/tot:0;
+          ctx.beginPath();ctx.moveTo(tx(x0),tz(z0));ctx.lineTo(tx(x1),tz(z1));
+          ctx.strokeStyle='#dd2222';ctx.lineWidth=wS+(wE-wS)*frac;ctx.stroke();
+          si++;
+        }
+      }
+    }
+  }
+
+  if(showN){for(let i=0;i<nodes.length;i++){ctx.beginPath();ctx.arc(tx(nodes[i].x),tz(nodes[i].z),2,0,Math.PI*2);ctx.fillStyle=nodes[i].parent<0?'#ffffff':'rgba(255,150,150,0.5)';ctx.fill();}}
+}
+
+function drawTerrain(ctx,W,H){
+  if(!heightGrid) return;
+  const {grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW,cellH}=heightGrid;
+  const seaLvl=Math.floor(gv('worldHeight')*0.4313725490196078);
+  const peakH=(gv('worldHeight')-seaLvl)*gv('peakHeight'), contourInt=gv('contourInterval');
+  const overlay=document.getElementById('overlayLines').checked;
+
+  const aspect=gw/gh;
+  let drawW,drawH,drawX,drawY;
+  if(W/H>aspect){drawH=H;drawW=H*aspect;drawX=(W-drawW)/2;drawY=0;}
+  else{drawW=W;drawH=W/aspect;drawX=0;drawY=(H-drawH)/2;}
+
+  const imgData=ctx.createImageData(gw,gh);
+  const data=imgData.data;
+
+  // Progressive layering: Height → +Contour → +Contour+Shaded
+  const addContour=currentView==='contour'||currentView==='shaded';
+  const addShade=currentView==='shaded';
+
+  // Pre-compute light direction for shading (NW light, azimuth 315°, altitude 45°)
+  let lx,lz,ly;
+  if(addShade){
+    const az=315*Math.PI/180, alt=45*Math.PI/180;
+    lx=Math.cos(alt)*Math.sin(az); lz=-Math.cos(alt)*Math.cos(az); ly=Math.sin(alt);
+  }
+
+  for(let gz=0;gz<gh;gz++){
+    for(let gx=0;gx<gw;gx++){
+      const i=gz*gw+gx, h=grid[i];
+      // Layer 1: Height colors (always)
+      let[r,g,b]=heightColor(h,peakH);
+      // Layer 2: Contour lines (contour + shaded views)
+      if(addContour){
+        const cp=h%contourInt;
+        if(cp<0.8||contourInt-cp<0.8){r=Math.max(0,r-60);g=Math.max(0,g-60);b=Math.max(0,b-60);}
+      }
+      // Layer 3: NW hillshading – steeper slopes get stronger shading (Google Earth style)
+      if(addShade){
+        const hL=gx>0?grid[i-1]:h, hR=gx<gw-1?grid[i+1]:h;
+        const hU=gz>0?grid[i-gw]:h, hD=gz<gh-1?grid[i+gw]:h;
+        const dhdx=(hR-hL)/(2*cellW), dhdz=(hD-hU)/(2*cellH);
+        const slope=Math.sqrt(dhdx*dhdx+dhdz*dhdz);
+        // Steepness factor: 0 on flat → 1 on steep (capped), controls how much shading applies
+        const steepness=Math.min(1,slope*0.15);
+        const nx=-dhdx, nz=-dhdz, ny=1;
+        const len=Math.sqrt(nx*nx+ny*ny+nz*nz);
+        const dot=(nx*lx+ny*ly+nz*lz)/len;
+        // Flat areas: shade≈1 (no darkening). Steep areas: full light/shadow range
+        const rawShade=0.35+0.65*Math.max(0,dot);
+        const shade=1-steepness*(1-rawShade);
+        r=Math.min(255,r*shade); g=Math.min(255,g*shade); b=Math.min(255,b*shade);
+      }
+      data[i*4]=r;data[i*4+1]=g;data[i*4+2]=b;data[i*4+3]=255;
+    }
+  }
+
+  const off=document.createElement('canvas'); off.width=gw; off.height=gh;
+  const octx=off.getContext('2d'); octx.putImageData(imgData,0,0);
+  ctx.imageSmoothingEnabled=false; ctx.drawImage(off,drawX,drawY,drawW,drawH);
+
+  if(overlay){
+    const {nodes,chains}=state;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    const sx=drawW/rangeX, sz=drawH/rangeZ;
+    const wtx=v=>drawX+(v-mnX)*sx, wtz=v=>drawY+(v-mnZ)*sz;
+    for(const chain of chains){
+      if(chain.length<2)continue;
+      const pts=chain.map(i=>({x:nodes[i].x,z:nodes[i].z}));
+      if(chain.length<3){
+        ctx.beginPath();ctx.moveTo(wtx(pts[0].x),wtz(pts[0].z));
+        for(let i=1;i<pts.length;i++)ctx.lineTo(wtx(pts[i].x),wtz(pts[i].z));
+        ctx.strokeStyle='rgba(255,50,50,0.5)';ctx.lineWidth=1;ctx.stroke();
+      } else {
+        const p0P={x:2*pts[0].x-pts[1].x,z:2*pts[0].z-pts[1].z};
+        const pNP={x:2*pts[pts.length-1].x-pts[pts.length-2].x,z:2*pts[pts.length-1].z-pts[pts.length-2].z};
+        const all=[p0P,...pts,pNP]; ctx.beginPath(); let first=true;
+        for(let i=0;i<all.length-3;i++){
+          const p0=all[i],p1=all[i+1],p2=all[i+2],p3=all[i+3];
+          for(let s=0;s<=4;s++){
+            const [x,z]=catmullRom(p0.x,p0.z,p1.x,p1.z,p2.x,p2.z,p3.x,p3.z,s/4);
+            if(first){ctx.moveTo(wtx(x),wtz(z));first=false;}else ctx.lineTo(wtx(x),wtz(z));
+          }
+        }
+        ctx.strokeStyle='rgba(255,50,50,0.5)';ctx.lineWidth=1;ctx.stroke();
+      }
+    }
+  }
+
+}
+
+function wireControls(){
+  document.querySelectorAll('input[type="range"]').forEach(slider => {
+    const numInput = document.getElementById(slider.id + '_n');
+    if(!numInput) return;
+    if(slider.step) numInput.step = slider.step;
+    slider.addEventListener('input', () => syncSliderToNumber(slider));
+    numInput.addEventListener('change', () => {
+      syncNumberToSlider(numInput);
+      const sliderId = slider.id;
+      if(displaySliders.includes(sliderId)){
+        draw();
+      } else if(terrainSliders.includes(sliderId)){
+        heightGrid=null;
+        if(currentView!=='lines') computeHeightGrid();
+        draw();
+      } else {
+        cachedSegData=null;
+        generate();
+      }
+      saveSettings();
+    });
+  });
+}
+
+// Slider categories: controls what gets recomputed when a slider changes
+// terrainSliders: recompute heightfield only (steps 6-7)
+// displaySliders: redraw only (no recomputation)
+// everything else: full regeneration (steps 1-7)
+const terrainSliders=['worldHeight','peakHeight','falloffDist','plateauCut','smoothPasses','ridgeWidth','drainageBias','logFalloff','falloffNoise','falloffNoiseScale','falloffNoiseOct','falloffSmooth'];
+const displaySliders=['lineWidth','contourInterval'];
+
+function resetView(){ viewZoom=1; viewPanX=0; viewPanY=0; draw(); }
+
+function initPanZoom(){
+  const cv=document.getElementById('cv');
+  let panZoomRAF=null;
+  function schedDraw(){ if(!panZoomRAF) panZoomRAF=requestAnimationFrame(()=>{ panZoomRAF=null; draw(); }); }
+  cv.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const rect=cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const factor=e.deltaY<0?1.18:1/1.18;
+    const newZoom=Math.max(0.25, Math.min(40, viewZoom*factor));
+    viewPanX=mx-(mx-viewPanX)*(newZoom/viewZoom);
+    viewPanY=my-(my-viewPanY)*(newZoom/viewZoom);
+    viewZoom=newZoom;
+    schedDraw();
+  }, {passive:false});
+  cv.addEventListener('mousedown', e=>{
+    if(e.button===0){isDragging=true; dragStartX=e.clientX-viewPanX; dragStartY=e.clientY-viewPanY; cv.style.cursor='grabbing';}
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    viewPanX=e.clientX-dragStartX; viewPanY=e.clientY-dragStartY;
+    schedDraw();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(isDragging){isDragging=false; document.getElementById('cv').style.cursor='grab';}
+  });
+  cv.addEventListener('dblclick', ()=>resetView());
+  cv.style.cursor='grab';
+}
+
+window.addEventListener('load',()=>{
+  loadSettings();
+  wireControls();
+  initPanZoom();
+  document.querySelectorAll('input[type="range"]').forEach(s => syncSliderToNumber(s));
+  generate();
+});
+window.addEventListener('resize',()=>draw());
+document.querySelectorAll('input[type="range"]').forEach(s=>{
+  // Live feedback during drag with appropriate debouncing per slider category.
+  // terrainSliders: RAF-gated (recompute height grid, ~16ms budget)
+  // generation sliders: timer-debounced (full regeneration is expensive, 250ms delay)
+  // displaySliders: immediate (just redraw, cheap)
+  s.addEventListener('input',()=>{
+    syncSliderToNumber(s);
+    if(displaySliders.includes(s.id)){
+      draw();
+    } else if(terrainSliders.includes(s.id)){
+      if(currentView==='lines') return;
+      if(terrainRAF) return;
+      terrainRAF=requestAnimationFrame(()=>{
+        terrainRAF=null;
+        heightGrid=null;
+        computeHeightGrid();
+        draw();
+      });
+    } else {
+      // Generation sliders: debounce with 250ms delay
+      if(genTimer) clearTimeout(genTimer);
+      genTimer=setTimeout(()=>{
+        genTimer=null;
+        cachedSegData=null;
+        generate();
+      }, 250);
+    }
+  });
+  s.addEventListener('change',()=>{
+    syncSliderToNumber(s);
+    // Cancel pending debounce timer — change fires the definitive update
+    if(genTimer){clearTimeout(genTimer); genTimer=null;}
+    if(displaySliders.includes(s.id)){
+      draw();
+    } else if(terrainSliders.includes(s.id)){
+      heightGrid=null;
+      if(currentView!=='lines') computeHeightGrid();
+      draw();
+    } else {
+      cachedSegData=null;
+      generate();
+    }
+    saveSettings();
+  });
+});
+document.querySelectorAll('input[type="checkbox"]').forEach(s=>s.addEventListener('change',()=>{
+  draw();
+  saveSettings();
+}));
+</script>
+</body>
+</html>

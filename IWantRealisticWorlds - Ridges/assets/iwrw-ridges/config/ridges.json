@@ -1,0 +1,87 @@
+{
+  // Ridge Configuration (Space Colonization)
+  // All changes require regenerating chunks or starting a new world
+  //
+  // Tune visually in tools/noise_mountains.html, then copy values here.
+  // 1 block = 1 pixel. Parameter order mirrors the HTML sliders.
+  //
+  // Each parameter has Min/Max variants for per-mountain randomization.
+  // Set min = max for fixed value (default). Widen range for variety.
+  // NOTE: peakHeight is a fraction of world height (not pixels like HTML)
+
+  // === Attractors ===
+  "attractorCountMin": 500,
+  "attractorCountMax": 500,
+  "cloudWidthMin": 1000,          // blocks, X extent of attractor ellipse
+  "cloudWidthMax": 1000,
+  "cloudHeightMin": 1000,         // blocks, Z extent of attractor ellipse
+  "cloudHeightMax": 1000,
+
+  // === Seeds ===
+  "seedCountMin": 5,             // number of root seeds per mountain
+  "seedCountMax": 5,
+  "seedMinDistMin": 300,         // min distance between seeds
+  "seedMinDistMax": 300,
+  "seedBorderMin": 100,           // border width between seed territories
+  "seedBorderMax": 100,
+  "maxSpreadMin": 300,           // max distance from root in blocks
+  "maxSpreadMax": 300,
+
+  // === Growth ===
+  "stepSizeMin": 40,             // blocks between nodes
+  "stepSizeMax": 40,
+  "killDistMin": 25,             // attractor removed when node reaches this distance
+  "killDistMax": 25,
+  "influenceRadiusMin": 150,     // attractors within this radius steer growth
+  "influenceRadiusMax": 150,
+  "maxIterMin": 250,             // max growth iterations
+  "maxIterMax": 250,
+  "wobbleMin": 0.36,             // random jitter per step (0-1)
+  "wobbleMax": 0.36,
+  "outwardBiasMin": 0.95,        // bias growth away from root (0-1)
+  "outwardBiasMax": 0.95,
+  "coherenceThresholdMin": 0.65, // prevent branches curling back (0 = off, 1 = strict)
+  "coherenceThresholdMax": 0.65,
+
+  // === Shaping ===
+  "minBranchLenMin": 3,          // prune leaf chains shorter than this
+  "minBranchLenMax": 3,
+  "chainSmoothMin": 3,           // position smoothing passes on chains
+  "chainSmoothMax": 3,
+  "ridgeSmoothMin": 3,           // height smoothing passes on nodes
+  "ridgeSmoothMax": 3,
+
+  // === Height ===
+  // peakHeight is a FRACTION of world height (0.47 = 47%, gives ~120 blocks on 256-high world)
+  // This differs from HTML which uses raw pixels — adjust accordingly
+  "peakHeightMin": 0.47,
+  "peakHeightMax": 0.47,
+  "localConeMin": 0.75,          // cone envelope strength (0 = flat, 1 = strong dome)
+  "localConeMax": 0.75,
+  "globalConeMin": 0.15,            // global cone centered on feature origin (0 = off)
+  "globalConeMax": 0.15,
+
+  // === Terrain ===
+  "falloffDistMin": 125,         // terrain extends this far from ridges (blocks)
+  "falloffDistMax": 125,
+  "ridgeWidthMin": 0.80,          // ridge seed width multiplier
+  "ridgeWidthMax": 0.80,
+  "drainageBiasMin": 0.50,          // extra drop away from cone centers
+  "drainageBiasMax": 0.50,
+  "smoothPassesMin": 5,          // final grid smoothing passes
+  "smoothPassesMax": 5,
+
+  // === Noise ===
+  "logFalloffMin": 0.20,           // slope power curve: 0 = linear, 0.5 = gentle base, 1+ = very gentle
+  "logFalloffMax": 0.20,
+  "falloffNoiseMin": 0.26,          // noise strength (0-1)
+  "falloffNoiseMax": 0.26,
+  "falloffNoiseScaleMin": 60,    // noise scale in blocks (higher = coarser features)
+  "falloffNoiseScaleMax": 60,
+  "falloffNoiseOctMin": 3,       // fractal octaves (more = finer detail)
+  "falloffNoiseOctMax": 3,
+  "falloffSmoothMin": 5,         // slope-selective smoothing passes
+  "falloffSmoothMax": 5,
+  "plateauCutMin": 0.00,         // fraction of peak to flatten (0 = disabled, 0.08 = top 8%)
+  "plateauCutMax": 0.00
+}

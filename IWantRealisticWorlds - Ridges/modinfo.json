@@ -1,0 +1,13 @@
+{
+  "type": "code",
+  "modid": "iwrwridges",
+  "name": "IWRW - Ridges",
+  "version": "1.0.0-dev.1",
+  "description": "Adds mountain ridges",
+  "authors": [ "ELRe" ],
+  "dependencies": {
+    "game": "1.21.0",
+    "iwantrealisticworlds": "1.0.0-dev"
+  },
+  "side": "Server"
+}
