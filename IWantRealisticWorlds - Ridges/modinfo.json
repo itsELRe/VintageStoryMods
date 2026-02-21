@@ -7,7 +7,7 @@
   "authors": [ "ELRe" ],
   "dependencies": {
     "game": "1.21.0",
-    "iwantrealisticworlds": "1.0.0-dev"
+    "iwantrealisticworlds": "1.0.0-dev.1"
   },
   "side": "Server"
 }

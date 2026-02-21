@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RealisticWorlds.Ridges")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0-dev.1+75e50a8a83a19b96202b195ef4b4a558777f7472")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0-dev.1+b5286e1ccd4ab36ec0e1e4cea2ab9b7fe467028d")]
 [assembly: System.Reflection.AssemblyProductAttribute("RealisticWorlds.Ridges")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RealisticWorlds.Ridges")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

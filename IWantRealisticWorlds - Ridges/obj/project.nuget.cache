@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "koOvYqrFLjM=",
+  "dgSpecHash": "xkYfPQD/+CQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Ridges\\Ridges.csproj",
+  "projectFilePath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\VintageStoryMods\\IWantRealisticWorlds - Ridges\\Ridges.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Rares\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.24\\microsoft.netcore.app.ref.8.0.24.nupkg.sha512",
     "C:\\Users\\Rares\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.24\\microsoft.windowsdesktop.app.ref.8.0.24.nupkg.sha512",

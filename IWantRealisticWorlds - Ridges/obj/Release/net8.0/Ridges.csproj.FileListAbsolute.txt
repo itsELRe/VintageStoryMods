@@ -13,3 +13,12 @@ C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Ridges\o
 C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Ridges\obj\Release\net8.0\refint\RealisticWorlds.Ridges.dll
 C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Ridges\obj\Release\net8.0\RealisticWorlds.Ridges.pdb
 C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Ridges\obj\Release\net8.0\ref\RealisticWorlds.Ridges.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.csproj.AssemblyReference.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.AssemblyInfoInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.AssemblyInfo.cs
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.csproj.CoreCompileInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\Ridges.sourcelink.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\RealisticWorlds.Ridges.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\refint\RealisticWorlds.Ridges.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\VintageStoryMods\IWantRealisticWorlds - Ridges\obj\Release\net8.0\RealisticWorlds.Ridges.pdb
