@@ -1,0 +1,403 @@
+<!--
+  Terrain Feature Visualizer — Volcano
+
+  Ports the VolcanoFeature.cs algorithm to an interactive heightfield preview.
+  Each cell = 1 in-game block. Matches the C# implementation exactly:
+    - Radial distance with noise warp for footprint irregularity
+    - Shape profiles: Convex (classic cone) and SCurve (smooth neck)
+    - Vent (crater) depression at center via hermite dip
+
+  PIPELINE OVERVIEW (maps to sidebar sections):
+    1. Dimensions  — Radius, height multiplier, world height
+    2. Shape       — Profile type (convex/scurve), curvature
+    3. Vent        — Crater radius and depth at peak
+    4. Irregularity — Noise warp for non-circular footprint
+    5. Display     — View mode, contour interval
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Volcano — Terrain Visualizer</title>
+<style>
+  :root{--bg:#0f1117;--surface:#181b24;--border:#2a2e3a;--text:#c8ccd8;--text-dim:#6b7084;--accent:#cf5a3a;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;}
+  .sidebar{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+  .sidebar h1{font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);padding:20px 20px 4px;}
+  .sidebar p{font-size:12px;color:var(--text-dim);padding:0 20px 16px;border-bottom:1px solid var(--border);}
+  .controls{padding:16px 20px;flex:1;}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 10px;}
+  .section-label:first-child{margin-top:0;}
+  .cr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cr label{font-size:12px;flex-shrink:0;}
+  .cr .r{display:flex;align-items:center;gap:6px;}
+  input[type="range"]{width:90px;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+  input[type="number"]{width:48px;font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:2px 4px;text-align:right;outline:none;-moz-appearance:textfield;}
+  input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  input[type="number"]:focus{border-color:var(--accent);}
+  select{font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:2px 6px;outline:none;}
+  select:focus{border-color:var(--accent);}
+  button{font-size:11px;font-weight:500;padding:8px 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;flex:1;}
+  button:hover{background:var(--border);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-row{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .canvas-wrap{flex:1;position:relative;overflow:hidden;}
+  canvas{display:block;width:100%;height:100%;}
+  .info{position:absolute;bottom:16px;left:16px;font-size:10px;color:var(--text-dim);background:rgba(15,17,23,0.85);padding:8px 12px;border-radius:4px;border:1px solid var(--border);}
+  .view-tabs{display:flex;gap:4px;margin-bottom:12px;}
+  .view-tabs button{padding:5px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;}
+  .view-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h1>Volcano</h1>
+  <p>Radial cone with vent crater and irregularity noise</p>
+  <div class="controls">
+    <div class="section-label" style="color:#cf5a3a">1. Dimensions</div>
+    <div class="cr"><label>World Height</label><div class="r"><input type="range" id="worldHeight" min="128" max="512" value="256" step="64"><input type="number" id="worldHeight_n" value="256"></div></div>
+    <div class="cr"><label>Radius</label><div class="r"><input type="range" id="radius" min="80" max="500" value="260" step="10"><input type="number" id="radius_n" value="260"></div></div>
+    <div class="cr"><label>Height Mult</label><div class="r"><input type="range" id="heightMult" min="0.1" max="1.5" value="0.85" step="0.05"><input type="number" id="heightMult_n" value="0.85" step="0.05"></div></div>
+
+    <div class="section-label" style="color:#d4a44a">2. Shape</div>
+    <div class="cr"><label>Profile</label><div class="r"><select id="shapeProfile"><option value="convex">Convex</option><option value="scurve">S-Curve</option></select></div></div>
+    <div class="cr"><label>Curvature</label><div class="r"><input type="range" id="curvature" min="0.1" max="4.0" value="1.5" step="0.1"><input type="number" id="curvature_n" value="1.5" step="0.1"></div></div>
+
+    <div class="section-label" style="color:#4a9eff">3. Vent</div>
+    <div class="cr"><label>Vent Radius</label><div class="r"><input type="range" id="ventRadius" min="0" max="0.4" value="0.12" step="0.01"><input type="number" id="ventRadius_n" value="0.12" step="0.01"></div></div>
+    <div class="cr"><label>Vent Depth</label><div class="r"><input type="range" id="ventDepth" min="0" max="0.8" value="0.10" step="0.01"><input type="number" id="ventDepth_n" value="0.10" step="0.01"></div></div>
+
+    <div class="section-label" style="color:#3db88c">4. Irregularity</div>
+    <div class="cr"><label>Frequency</label><div class="r"><input type="range" id="irregFreq" min="0.002" max="0.03" value="0.01" step="0.001"><input type="number" id="irregFreq_n" value="0.01" step="0.001"></div></div>
+    <div class="cr"><label>Strength</label><div class="r"><input type="range" id="irregStrength" min="0" max="0.5" value="0.15" step="0.01"><input type="number" id="irregStrength_n" value="0.15" step="0.01"></div></div>
+
+    <div class="section-label" style="color:#888">Display</div>
+    <div class="view-tabs">
+      <button id="viewHeight" class="active" onclick="setView('height')">Height</button>
+      <button id="viewContour" onclick="setView('contour')">Contour</button>
+      <button id="viewShaded" onclick="setView('shaded')">Shaded</button>
+    </div>
+    <div class="cr"><label>Contour Interval</label><div class="r"><input type="range" id="contourInterval" min="2" max="30" value="8" step="1"><input type="number" id="contourInterval_n" value="8"></div></div>
+    <div class="btn-row"><button class="primary" onclick="regenerate()">Regenerate</button><button onclick="resetView()">Reset View</button></div>
+  </div>
+</div>
+<div class="canvas-wrap">
+  <canvas id="cv"></canvas>
+  <div class="info" id="info">-</div>
+</div>
+
+<script>
+const STORAGE_KEY='volcano_settings';
+const GRID_RES=2;
+let currentView='height', heightGrid=null, seed=Date.now();
+let viewZoom=1,viewPanX=0,viewPanY=0,isDragging=false,dragStartX=0,dragStartY=0;
+let terrainRAF=null;
+
+function gv(id){return parseFloat(document.getElementById(id).value);}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function regenerate(){seed=(Math.random()*0x7fffffff)|0;computeHeightGrid();draw();}
+
+function saveSettings(){
+  const s={};
+  document.querySelectorAll('input[type="range"]').forEach(el=>{s[el.id]=parseFloat(el.value);});
+  s.shapeProfile=document.getElementById('shapeProfile').value;
+  s._view=currentView;s._seed=seed;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){}
+}
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;
+    const s=JSON.parse(raw);
+    document.querySelectorAll('input[type="range"]').forEach(el=>{
+      if(s[el.id]!==undefined){el.value=s[el.id];syncSliderToNumber(el);}
+    });
+    if(s.shapeProfile)document.getElementById('shapeProfile').value=s.shapeProfile;
+    if(s._view)currentView=s._view;
+    if(s._seed)seed=s._seed;
+    document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+    const btn=document.getElementById('view'+currentView.charAt(0).toUpperCase()+currentView.slice(1));
+    if(btn)btn.classList.add('active');
+  }catch(e){}
+}
+
+function syncSliderToNumber(s){
+  const n=document.getElementById(s.id+'_n');
+  if(n){const v=parseFloat(s.value);n.value=Number.isInteger(v)&&!s.step.includes('.')?v:v.toFixed(s.step.includes('.')?s.step.split('.')[1].length:2);}
+}
+function syncNumberToSlider(n){
+  const s=document.getElementById(n.id.replace('_n',''));if(s)s.value=n.value;
+}
+
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view'+v.charAt(0).toUpperCase()+v.slice(1)).classList.add('active');
+  draw();saveSettings();
+}
+
+// ============================================================
+// Hash-based 2D value noise, returns [-1,1]. Matches C# exactly.
+// ============================================================
+function hash2d(ix,iy){
+  let h=ix*374761393+iy*668265263;
+  h=((h^(h>>>13))*1274126177)&0x7fffffff;
+  return((h^(h>>>16))&0xFFFFFF)/0xFFFFFF*2-1;
+}
+function valueNoise2D(x,y){
+  const i=Math.floor(x),j=Math.floor(y);
+  const fx=x-i,fy=y-j;
+  const u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  const g00=hash2d(i,j),g10=hash2d(i+1,j),g01=hash2d(i,j+1),g11=hash2d(i+1,j+1);
+  const x1=g00*(1-u)+g10*u, x2=g01*(1-u)+g11*u;
+  return x1*(1-v)+x2*v;
+}
+
+// ============================================================
+// Shape profiles — match C# ApplyShapeProfile exactly
+// t=0 center, t=1 edge. Returns 0=peak, 1=base.
+// ============================================================
+function applyShapeProfile(t, profile, curvature){
+  if(profile==='convex'){
+    return 1.0-Math.pow(1.0-t, 1.0+curvature);
+  } else if(profile==='scurve'){
+    if(curvature<0.01) return t;
+    const s=t*t*(3-2*t);
+    return t+(s-t)*curvature*2.0;
+  }
+  return t;
+}
+
+// ============================================================
+// COMPUTE HEIGHTFIELD — ports VolcanoFeature.GetDirectHeight
+// ============================================================
+function computeHeightGrid(){
+  const worldH=gv('worldHeight');
+  const seaLvl=Math.floor(worldH*0.4313725490196078);
+  const baseHeight=seaLvl+10; // simulate typical terrain
+  const peakHeight=worldH-1;
+  const radius=gv('radius');
+  const heightMult=gv('heightMult');
+  const profile=document.getElementById('shapeProfile').value;
+  const curvature=gv('curvature');
+  const ventR=gv('ventRadius');
+  const ventD=gv('ventDepth');
+  const irregFreq=gv('irregFreq');
+  const irregStr=gv('irregStrength');
+
+  const pad=20;
+  const mnX=-radius-pad, mxX=radius+pad;
+  const mnZ=-radius-pad, mxZ=radius+pad;
+  const rangeX=mxX-mnX, rangeZ=mxZ-mnZ;
+  const gw=Math.floor(rangeX/GRID_RES)+2;
+  const gh=Math.floor(rangeZ/GRID_RES)+2;
+  const grid=new Float32Array(gw*gh);
+
+  let actualMax=0;
+  for(let gz=0;gz<gh;gz++){
+    const wz=mnZ+gz*GRID_RES;
+    for(let gx=0;gx<gw;gx++){
+      const wx=mnX+gx*GRID_RES;
+      const idx=gz*gw+gx;
+
+      const dx=wx, dz=wz; // center at origin
+      const baseDist=Math.sqrt(dx*dx+dz*dz)/radius;
+      if(baseDist>1.0) continue;
+
+      // Irregularity: noise warps effective radius
+      const noise=valueNoise2D(wx*irregFreq, wz*irregFreq);
+      const smoothing=Math.log10(1.0+baseDist*9.0);
+      const effectiveRadius=radius*(1.0+noise*irregStr*smoothing);
+      const dist=Math.sqrt(dx*dx+dz*dz)/effectiveRadius;
+      if(dist>1.0) continue;
+
+      // Shape profile
+      const heightFactor=applyShapeProfile(dist, profile, curvature);
+
+      const heightRange=peakHeight-baseHeight;
+      let volcanoHeight=peakHeight-(heightFactor*heightRange);
+      volcanoHeight=baseHeight+(volcanoHeight-baseHeight)*heightMult;
+
+      // Vent depression
+      if(ventR>0&&dist<ventR){
+        const t=dist/ventR;
+        const ventFactor=t*t*(3.0-2.0*t);
+        const ventDepthBlocks=(volcanoHeight-baseHeight)*ventD;
+        volcanoHeight-=ventDepthBlocks*(1.0-ventFactor);
+      }
+
+      // Store as height above base
+      const h=Math.max(0,volcanoHeight-baseHeight);
+      grid[idx]=h;
+      if(h>actualMax) actualMax=h;
+    }
+  }
+
+  const maxH=(peakHeight-baseHeight)*heightMult;
+  heightGrid={grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW:GRID_RES,cellH:GRID_RES,maxH,actualMax};
+
+  const info=document.getElementById('info');
+  info.textContent=`Radius: ${radius} | Peak: ${actualMax.toFixed(0)} blocks above base | seaLevel: ${seaLvl} | grid: ${gw}x${gh}`;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function heightColor(h,maxH){
+  const t=Math.min(1,h/maxH);
+  if(t<0.01)return[0,0,0];
+  if(t<0.25){const f=t/0.25;return[lerp(50,120,f),lerp(30,50,f),lerp(20,25,f)];}
+  if(t<0.5){const f=(t-0.25)/0.25;return[lerp(120,180,f),lerp(50,80,f),lerp(25,30,f)];}
+  if(t<0.75){const f=(t-0.5)/0.25;return[lerp(180,220,f),lerp(80,140,f),lerp(30,60,f)];}
+  const f=(t-0.75)/0.25;return[lerp(220,255,f),lerp(140,240,f),lerp(60,200,f)];
+}
+
+function draw(){
+  if(!heightGrid)return;
+  const cv=document.getElementById('cv');
+  const rect=cv.parentElement.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  cv.width=rect.width*dpr;cv.height=rect.height*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;
+  ctx.fillStyle='#0f1117';ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(viewPanX,viewPanY);
+  ctx.scale(viewZoom,viewZoom);
+  drawTerrain(ctx,W,H);
+  ctx.restore();
+  if(viewZoom!==1||viewPanX!==0||viewPanY!==0){
+    ctx.fillStyle='rgba(15,17,23,0.85)';ctx.strokeStyle='#2a2e3a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(W-130,12,118,26,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#6b7084';ctx.font='11px "Segoe UI",sans-serif';ctx.textAlign='right';
+    ctx.fillText(`${Math.round(viewZoom*100)}%  \u00b7  dbl-click reset`,W-18,30);
+  }
+  drawScaleBar(ctx,W,H);
+}
+
+function drawTerrain(ctx,W,H){
+  const{grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW,cellH,maxH}=heightGrid;
+  const contourInt=gv('contourInterval');
+  const addContour=currentView==='contour'||currentView==='shaded';
+  const addShade=currentView==='shaded';
+
+  const aspect=gw/gh;
+  let drawW,drawH,drawX,drawY;
+  if(W/H>aspect){drawH=H;drawW=H*aspect;drawX=(W-drawW)/2;drawY=0;}
+  else{drawW=W;drawH=W/aspect;drawX=0;drawY=(H-drawH)/2;}
+
+  const imgData=ctx.createImageData(gw,gh);
+  const data=imgData.data;
+
+  let lx,lz,ly;
+  if(addShade){
+    const az=315*Math.PI/180,alt=45*Math.PI/180;
+    lx=Math.cos(alt)*Math.sin(az);lz=-Math.cos(alt)*Math.cos(az);ly=Math.sin(alt);
+  }
+
+  for(let gz=0;gz<gh;gz++){
+    for(let gx=0;gx<gw;gx++){
+      const i=gz*gw+gx,h=grid[i];
+      let[r,g,b]=heightColor(h,maxH);
+      if(addContour){
+        const cp=h%contourInt;
+        if(cp<0.8||contourInt-cp<0.8){r=Math.max(0,r-60);g=Math.max(0,g-60);b=Math.max(0,b-60);}
+      }
+      if(addShade){
+        const hL=gx>0?grid[i-1]:h,hR=gx<gw-1?grid[i+1]:h;
+        const hU=gz>0?grid[i-gw]:h,hD=gz<gh-1?grid[i+gw]:h;
+        const dhdx=(hR-hL)/(2*cellW),dhdz=(hD-hU)/(2*cellH);
+        const slope=Math.sqrt(dhdx*dhdx+dhdz*dhdz);
+        const steepness=Math.min(1,slope*0.15);
+        const nx=-dhdx,nz=-dhdz,ny=1;
+        const len=Math.sqrt(nx*nx+ny*ny+nz*nz);
+        const dot=(nx*lx+ny*ly+nz*lz)/len;
+        const rawShade=0.35+0.65*Math.max(0,dot);
+        const shade=1-steepness*(1-rawShade);
+        r=Math.min(255,r*shade);g=Math.min(255,g*shade);b=Math.min(255,b*shade);
+      }
+      data[i*4]=r;data[i*4+1]=g;data[i*4+2]=b;data[i*4+3]=255;
+    }
+  }
+
+  const off=document.createElement('canvas');off.width=gw;off.height=gh;
+  const octx=off.getContext('2d');octx.putImageData(imgData,0,0);
+  ctx.imageSmoothingEnabled=false;ctx.drawImage(off,drawX,drawY,drawW,drawH);
+}
+
+function drawScaleBar(ctx,W,H){
+  if(!heightGrid)return;
+  const{gw,gh,rangeX}=heightGrid;
+  const aspect=gw/gh;
+  let drawW;if(W/H>aspect)drawW=H*aspect;else drawW=W;
+  const ppb=(drawW/rangeX)*viewZoom;
+  const segBlocks=50,numSegs=5;
+  const segPx=segBlocks*ppb,totalPx=numSegs*segPx;
+  const margin=20,barH=8;
+  const barX=W-margin-totalPx,barY=H-margin-barH-14;
+  ctx.fillStyle='rgba(15,17,23,0.85)';ctx.strokeStyle='#2a2e3a';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(barX-8,barY-14,totalPx+16,barH+30,4);ctx.fill();ctx.stroke();
+  for(let i=0;i<numSegs;i++){
+    ctx.fillStyle=i%2===0?'#c8ccd8':'#4a4e5a';
+    ctx.fillRect(barX+i*segPx,barY,segPx,barH);
+  }
+  ctx.strokeStyle='#6b7084';ctx.lineWidth=0.5;ctx.strokeRect(barX,barY,totalPx,barH);
+  ctx.fillStyle='#6b7084';ctx.font='9px "Segoe UI",sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=numSegs;i++) ctx.fillText(i*segBlocks+'',barX+i*segPx,barY+barH+10);
+}
+
+function resetView(){viewZoom=1;viewPanX=0;viewPanY=0;draw();}
+
+function initPanZoom(){
+  const cv=document.getElementById('cv');
+  let raf=null;
+  function schedDraw(){if(!raf)raf=requestAnimationFrame(()=>{raf=null;draw();});}
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const factor=e.deltaY<0?1.18:1/1.18;
+    const nz=Math.max(0.25,Math.min(40,viewZoom*factor));
+    viewPanX=mx-(mx-viewPanX)*(nz/viewZoom);viewPanY=my-(my-viewPanY)*(nz/viewZoom);
+    viewZoom=nz;schedDraw();
+  },{passive:false});
+  cv.addEventListener('mousedown',e=>{if(e.button===0){isDragging=true;dragStartX=e.clientX-viewPanX;dragStartY=e.clientY-viewPanY;cv.style.cursor='grabbing';}});
+  window.addEventListener('mousemove',e=>{if(!isDragging)return;viewPanX=e.clientX-dragStartX;viewPanY=e.clientY-dragStartY;schedDraw();});
+  window.addEventListener('mouseup',()=>{if(isDragging){isDragging=false;document.getElementById('cv').style.cursor='grab';}});
+  cv.addEventListener('dblclick',()=>resetView());
+  cv.style.cursor='grab';
+}
+
+const displaySliders=['contourInterval'];
+
+window.addEventListener('load',()=>{
+  loadSettings();
+  document.querySelectorAll('input[type="range"]').forEach(s=>{
+    const n=document.getElementById(s.id+'_n');
+    if(!n)return;
+    if(s.step)n.step=s.step;
+    syncSliderToNumber(s);
+    s.addEventListener('input',()=>{
+      syncSliderToNumber(s);
+      if(displaySliders.includes(s.id)){draw();}
+      else{if(terrainRAF)return;terrainRAF=requestAnimationFrame(()=>{terrainRAF=null;computeHeightGrid();draw();});}
+    });
+    s.addEventListener('change',()=>{
+      syncSliderToNumber(s);
+      if(!displaySliders.includes(s.id)){computeHeightGrid();}
+      draw();saveSettings();
+    });
+    n.addEventListener('change',()=>{syncNumberToSlider(n);computeHeightGrid();draw();saveSettings();});
+  });
+  document.getElementById('shapeProfile').addEventListener('change',()=>{computeHeightGrid();draw();saveSettings();});
+  initPanZoom();
+  computeHeightGrid();
+  draw();
+});
+window.addEventListener('resize',()=>draw());
+</script>
+</body>
+</html>

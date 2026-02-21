@@ -1,0 +1,15 @@
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.csproj.AssemblyReference.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.AssemblyInfoInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.AssemblyInfo.cs
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.csproj.CoreCompileInputs.cache
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\Volcanoes.sourcelink.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\bin\Release\net8.0\assets\iwrw-volcanoes\config\volcanoes.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\bin\Release\net8.0\modinfo.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\bin\Release\net8.0\RealisticWorlds.Volcanoes.deps.json
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\bin\Release\net8.0\RealisticWorlds.Volcanoes.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\bin\Release\net8.0\RealisticWorlds.Volcanoes.pdb
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\RealisticWorlds.Volcanoes.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\refint\RealisticWorlds.Volcanoes.dll
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\RealisticWorlds.Volcanoes.pdb
+C:\Users\Rares\Desktop\Vintage Story\MyMods\IWantRealisticWorlds\Addons\Volcanoes\obj\Release\net8.0\ref\RealisticWorlds.Volcanoes.dll

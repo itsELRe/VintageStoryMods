@@ -1,0 +1,38 @@
+{
+  // Volcano Configuration
+  // All changes require regenerating chunks or starting a new world
+  //
+  // NOTE: Spawn rates are controlled by the core (globalLandformDensity and featureWeights)
+  // This config only controls appearance (size, shape, vents, etc.)
+
+  // === Dimensions ===
+  // Radius in blocks (horizontal size at base)
+  "radiusMin": 240,
+  "radiusMax": 270,
+
+  // Height multiplier for variety (0.7 = 70% height, 1.0 = 100% height - never exceeds world max)
+  "heightMultiplierMin": 0.7,
+  "heightMultiplierMax": 1.0,
+
+  // === Shape Profiles ===
+  // Weights determine probability - system auto-normalizes
+  "shapeProfileWeights": {
+    "convex": 70,    // Narrow at top, steep at base (classic volcanic cone)
+    "scurve": 30     // Smooth transition with pronounced neck
+  },
+
+  // === Volcano Vents (Craters) ===
+  // Create depressions at peak for realistic volcanic appearance
+  "ventsEnabled": true,              // Set to false to disable vents entirely
+  "ventRadiusMin": 0.10,             // Min vent radius (10% of volcano radius)
+  "ventRadiusMax": 0.15,             // Max vent radius (15% of volcano radius)
+  "ventDepthMin": 0.05,              // Min vent depth (5% of volcano height)
+  "ventDepthMax": 0.13,              // Max vent depth (13% of volcano height)
+
+  // === Irregularity ===
+  // Makes footprints non-circular using 2D noise
+  // Creates organic lobes at mountain base while preserving sharp peaks
+  "irregularityEnabled": true,       // Enabled for natural organic shapes
+  "irregularityStrengthMin": 0.10,   // Min radius variation (±10%)
+  "irregularityStrengthMax": 0.20    // Max radius variation (±20%)
+}

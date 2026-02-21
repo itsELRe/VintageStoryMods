@@ -1,0 +1,13 @@
+{
+  "type": "code",
+  "modid": "iwrwvolcanoes",
+  "name": "IWRW - Volcanoes",
+  "version": "1.0.0-dev.1",
+  "description": "Adds realistic volcanic formations to terrain generation (stratovolcanoes, shield volcanoes, cinder cones, lava domes)",
+  "authors": [ "ELRe" ],
+  "dependencies": {
+    "game": "1.21.0",
+    "iwantrealisticworlds": "1.0.0-dev.1"
+  },
+  "side": "Server"
+}

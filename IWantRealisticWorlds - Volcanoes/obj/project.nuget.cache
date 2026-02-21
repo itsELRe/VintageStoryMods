@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "8K92oN3qdEc=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Volcanoes\\Volcanoes.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Rares\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.24\\microsoft.netcore.app.ref.8.0.24.nupkg.sha512",
+    "C:\\Users\\Rares\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.24\\microsoft.windowsdesktop.app.ref.8.0.24.nupkg.sha512",
+    "C:\\Users\\Rares\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.24\\microsoft.aspnetcore.app.ref.8.0.24.nupkg.sha512"
+  ],
+  "logs": []
+}
