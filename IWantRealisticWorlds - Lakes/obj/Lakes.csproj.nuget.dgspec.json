@@ -1,0 +1,158 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Lakes\\Lakes.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Lakes\\Lakes.csproj": {
+      "version": "1.0.0-dev.1",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Lakes\\Lakes.csproj",
+        "projectName": "RealisticWorlds.Lakes",
+        "projectPath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Lakes\\Lakes.csproj",
+        "packagesPath": "C:\\Users\\Rares\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\Addons\\Lakes\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Rares\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\IWantRealisticWorlds.csproj": {
+                "projectPath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\IWantRealisticWorlds.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\IWantRealisticWorlds.csproj": {
+      "version": "1.0.0-dev.1",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\IWantRealisticWorlds.csproj",
+        "projectName": "IWantRealisticWorlds",
+        "projectPath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\IWantRealisticWorlds.csproj",
+        "packagesPath": "C:\\Users\\Rares\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Rares\\Desktop\\Vintage Story\\MyMods\\IWantRealisticWorlds\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Rares\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

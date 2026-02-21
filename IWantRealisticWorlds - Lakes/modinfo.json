@@ -1,0 +1,13 @@
+{
+  "type": "code",
+  "modid": "iwrwlakes",
+  "name": "IWRW - Lakes",
+  "version": "1.0.0-dev.1",
+  "description": "Adds bowl-shaped lake depressions with water fill to terrain generation",
+  "authors": [ "ELRe" ],
+  "dependencies": {
+    "game": "1.21.0",
+    "iwantrealisticworlds": "1.0.0-dev.1"
+  },
+  "side": "Server"
+}

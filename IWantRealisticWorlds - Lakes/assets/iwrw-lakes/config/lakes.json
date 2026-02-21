@@ -1,0 +1,32 @@
+{
+  // Lake Configuration
+  // All changes require regenerating chunks or starting a new world
+  //
+  // NOTE: Spawn rates are controlled by the core (globalLandformDensity and featureWeights)
+  // This config only controls appearance (size, shape, depth, etc.)
+
+  // === Dimensions ===
+  // Water body radius in blocks (horizontal size)
+  "radiusMin": 60,
+  "radiusMax": 180,
+
+  // Shore depression width as fraction of water radius
+  // 0.4 = shoreline slope extends 40% beyond water edge
+  "shoreFraction": 0.4,
+
+  // === Depth ===
+  // Lake floor depth below water surface (blocks)
+  // Bowl shape: deepest at center, shallow at edges
+  "depthMin": 6,
+  "depthMax": 20,
+
+  // Water surface offset from sea level (blocks).
+  // +20 = raised bowl 20 blocks above seaLevel.
+  // Negative = below seaLevel, positive = above.
+  "waterLevelOffset": 20,
+
+  // === Shoreline Irregularity ===
+  // Makes shoreline non-circular using 2D noise
+  "noiseFrequency": 0.015,
+  "noiseStrength": 0.25
+}

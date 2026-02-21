@@ -1,0 +1,515 @@
+<!--
+  Terrain Feature Visualizer — Lake
+
+  Ports the LakeFeature.cs algorithm to an interactive heightfield preview.
+  Each cell = 1 in-game block. Matches the C# implementation exactly:
+    - Inner zone: bowl-shaped lake floor (parabolic depth)
+    - Shore zone: smoothstep ramp between waterLevel and base terrain
+    - Noisy distance for irregular shoreline shape
+    - Water fill visualization (blue tint in water-covered areas)
+
+  PIPELINE OVERVIEW (maps to sidebar sections):
+    1. World        — World height, sea level, base terrain height
+    2. Lake Size    — Inner/outer radius, water level offset
+    3. Depth        — Bowl floor depth below water surface
+    4. Shore Noise  — Shoreline irregularity via distance warp
+    5. Display      — View mode, contour interval, water overlay
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lake — Terrain Visualizer</title>
+<style>
+  :root{--bg:#0f1117;--surface:#181b24;--border:#2a2e3a;--text:#c8ccd8;--text-dim:#6b7084;--accent:#3a8acf;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;}
+  .sidebar{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+  .sidebar h1{font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);padding:20px 20px 4px;}
+  .sidebar p{font-size:12px;color:var(--text-dim);padding:0 20px 16px;border-bottom:1px solid var(--border);}
+  .controls{padding:16px 20px;flex:1;}
+  .section-label{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 10px;}
+  .section-label:first-child{margin-top:0;}
+  .cr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cr label{font-size:12px;flex-shrink:0;}
+  .cr .r{display:flex;align-items:center;gap:6px;}
+  input[type="range"]{width:90px;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+  input[type="number"]{width:48px;font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:2px 4px;text-align:right;outline:none;-moz-appearance:textfield;}
+  input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  input[type="number"]:focus{border-color:var(--accent);}
+  button{font-size:11px;font-weight:500;padding:8px 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;flex:1;}
+  button:hover{background:var(--border);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-row{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .cbr{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .cbr input[type="checkbox"]{accent-color:var(--accent);}
+  .cbr label{font-size:12px;cursor:pointer;}
+  .canvas-wrap{flex:1;position:relative;overflow:hidden;}
+  canvas{display:block;width:100%;height:100%;}
+  .info{position:absolute;bottom:16px;left:16px;font-size:10px;color:var(--text-dim);background:rgba(15,17,23,0.85);padding:8px 12px;border-radius:4px;border:1px solid var(--border);}
+  .view-tabs{display:flex;gap:4px;margin-bottom:12px;}
+  .view-tabs button{padding:5px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;}
+  .view-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h1>Lake</h1>
+  <p>Bowl-shaped lake with shore ramp and water fill</p>
+  <div class="controls">
+    <div class="section-label" style="color:#3a8acf">1. World</div>
+    <div class="cr"><label>World Height</label><div class="r"><input type="range" id="worldHeight" min="128" max="512" value="256" step="64"><input type="number" id="worldHeight_n" value="256"></div></div>
+    <div class="cr"><label>Base Terrain</label><div class="r"><input type="range" id="baseTerrain" min="0" max="80" value="30" step="1"><input type="number" id="baseTerrain_n" value="30"></div></div>
+
+    <div class="section-label" style="color:#5aafcf">2. Lake Size</div>
+    <div class="cr"><label>Inner Radius</label><div class="r"><input type="range" id="innerRadius" min="20" max="300" value="120" step="5"><input type="number" id="innerRadius_n" value="120"></div></div>
+    <div class="cr"><label>Shore Fraction</label><div class="r"><input type="range" id="shoreFraction" min="0.1" max="1.0" value="0.4" step="0.05"><input type="number" id="shoreFraction_n" value="0.40" step="0.05"></div></div>
+    <div class="cr"><label>Water Offset</label><div class="r"><input type="range" id="waterOffset" min="-20" max="40" value="20" step="1"><input type="number" id="waterOffset_n" value="20"></div></div>
+
+    <div class="section-label" style="color:#3db88c">3. Depth</div>
+    <div class="cr"><label>Floor Depth</label><div class="r"><input type="range" id="floorDepth" min="2" max="40" value="14" step="1"><input type="number" id="floorDepth_n" value="14"></div></div>
+
+    <div class="section-label" style="color:#d4a44a">4. Shore Noise</div>
+    <div class="cr"><label>Frequency</label><div class="r"><input type="range" id="noiseFreq" min="0.002" max="0.05" value="0.015" step="0.001"><input type="number" id="noiseFreq_n" value="0.015" step="0.001"></div></div>
+    <div class="cr"><label>Strength</label><div class="r"><input type="range" id="noiseStrength" min="0" max="0.5" value="0.25" step="0.01"><input type="number" id="noiseStrength_n" value="0.25" step="0.01"></div></div>
+
+    <div class="section-label" style="color:#888">Display</div>
+    <div class="view-tabs">
+      <button id="viewHeight" class="active" onclick="setView('height')">Height</button>
+      <button id="viewContour" onclick="setView('contour')">Contour</button>
+      <button id="viewShaded" onclick="setView('shaded')">Shaded</button>
+      <button id="viewCross" onclick="setView('cross')">Cross</button>
+    </div>
+    <div class="cr"><label>Contour Interval</label><div class="r"><input type="range" id="contourInterval" min="1" max="20" value="4" step="1"><input type="number" id="contourInterval_n" value="4"></div></div>
+    <div class="cbr"><input type="checkbox" id="showWater" checked><label for="showWater">Show water fill</label></div>
+    <div class="btn-row"><button class="primary" onclick="regenerate()">Regenerate</button><button onclick="resetView()">Reset View</button></div>
+  </div>
+</div>
+<div class="canvas-wrap">
+  <canvas id="cv"></canvas>
+  <div class="info" id="info">-</div>
+</div>
+
+<script>
+const STORAGE_KEY='lake_settings';
+const GRID_RES=1;
+let currentView='height',heightGrid=null,seed=Date.now();
+let viewZoom=1,viewPanX=0,viewPanY=0,isDragging=false,dragStartX=0,dragStartY=0;
+let terrainRAF=null;
+
+function gv(id){return parseFloat(document.getElementById(id).value);}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function regenerate(){seed=(Math.random()*0x7fffffff)|0;computeHeightGrid();draw();}
+
+function saveSettings(){
+  const s={};
+  document.querySelectorAll('input[type="range"]').forEach(el=>{s[el.id]=parseFloat(el.value);});
+  document.querySelectorAll('input[type="checkbox"]').forEach(el=>{s[el.id]=el.checked;});
+  s._view=currentView;s._seed=seed;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){}
+}
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;
+    const s=JSON.parse(raw);
+    document.querySelectorAll('input[type="range"]').forEach(el=>{
+      if(s[el.id]!==undefined){el.value=s[el.id];syncSliderToNumber(el);}
+    });
+    document.querySelectorAll('input[type="checkbox"]').forEach(el=>{
+      if(s[el.id]!==undefined)el.checked=s[el.id];
+    });
+    if(s._view)currentView=s._view;
+    if(s._seed)seed=s._seed;
+    document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+    const btn=document.getElementById('view'+currentView.charAt(0).toUpperCase()+currentView.slice(1));
+    if(btn)btn.classList.add('active');
+  }catch(e){}
+}
+
+function syncSliderToNumber(s){
+  const n=document.getElementById(s.id+'_n');
+  if(n){const v=parseFloat(s.value);n.value=Number.isInteger(v)&&!(s.step&&s.step.includes('.'))?v:v.toFixed(s.step&&s.step.includes('.')?s.step.split('.')[1].length:2);}
+}
+function syncNumberToSlider(n){
+  const s=document.getElementById(n.id.replace('_n',''));if(s)s.value=n.value;
+}
+
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('.view-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view'+v.charAt(0).toUpperCase()+v.slice(1)).classList.add('active');
+  draw();saveSettings();
+}
+
+// ============================================================
+// Hash-based 2D value noise, returns [-1,1]. Matches C# exactly.
+// ============================================================
+function hash2d(ix,iy){
+  let h=ix*374761393+iy*668265263;
+  h=((h^(h>>>13))*1274126177)&0x7fffffff;
+  return((h^(h>>>16))&0xFFFFFF)/0xFFFFFF*2-1;
+}
+function valueNoise2D(x,y){
+  const i=Math.floor(x),j=Math.floor(y);
+  const fx=x-i,fy=y-j;
+  const u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  const g00=hash2d(i,j),g10=hash2d(i+1,j),g01=hash2d(i,j+1),g11=hash2d(i+1,j+1);
+  const x1=g00*(1-u)+g10*u,x2=g01*(1-u)+g11*u;
+  return x1*(1-v)+x2*v;
+}
+
+// ============================================================
+// COMPUTE HEIGHTFIELD — ports LakeFeature.GetDirectHeight
+// Stores absolute Y in the grid, plus metadata for water rendering.
+// ============================================================
+function computeHeightGrid(){
+  const worldH=gv('worldHeight');
+  const seaLvl=Math.floor(worldH*0.4313725490196078);
+  const baseTerrain=seaLvl+gv('baseTerrain');
+  const innerR=gv('innerRadius');
+  const shoreFrac=gv('shoreFraction');
+  const outerR=innerR*(1+shoreFrac);
+  const waterOffset=gv('waterOffset');
+  const waterLevel=seaLvl+waterOffset;
+  const depth=gv('floorDepth');
+  const noiseF=gv('noiseFreq');
+  const noiseS=gv('noiseStrength');
+
+  const pad=30;
+  const extent=outerR+pad;
+  const mnX=-extent,mxX=extent,mnZ=-extent,mxZ=extent;
+  const rangeX=mxX-mnX,rangeZ=mxZ-mnZ;
+  const gw=Math.floor(rangeX/GRID_RES)+2;
+  const gh=Math.floor(rangeZ/GRID_RES)+2;
+
+  // Store absolute Y per cell, and water mask
+  const grid=new Float32Array(gw*gh);
+  const waterMask=new Uint8Array(gw*gh); // 1 = has water above rock
+  grid.fill(baseTerrain);
+
+  let minY=baseTerrain,maxY=baseTerrain;
+  for(let gz=0;gz<gh;gz++){
+    const wz=mnZ+gz*GRID_RES;
+    for(let gx=0;gx<gw;gx++){
+      const wx=mnX+gx*GRID_RES;
+      const idx=gz*gw+gx;
+
+      // Noisy distance from center (matches C# NoisyDistance)
+      const dx=wx,dz=wz;
+      let dist=Math.sqrt(dx*dx+dz*dz);
+      if(noiseS>0&&dist>0){
+        const noise=valueNoise2D(wx*noiseF,wz*noiseF);
+        dist*=1.0-noiseS*noise;
+      }
+
+      if(dist>outerR) continue; // outside feature
+
+      let result;
+      if(dist>innerR){
+        // Shore zone: smoothstep ramp
+        let t=(dist-innerR)/(outerR-innerR);
+        t=t*t*(3.0-2.0*t);
+        result=waterLevel+(baseTerrain-waterLevel)*t;
+      } else {
+        // Inner zone: parabolic bowl
+        const bowlT=dist/Math.max(1,innerR);
+        const bowlFactor=bowlT*bowlT;
+        result=(waterLevel-depth)+depth*bowlFactor;
+      }
+
+      if(Math.abs(result-baseTerrain)<0.5) continue; // no change
+
+      result=Math.max(1,result);
+      grid[idx]=result;
+
+      // Water: inner zone where rock is below waterLevel
+      if(dist<=innerR && result<waterLevel){
+        waterMask[idx]=1;
+      }
+
+      if(result<minY)minY=result;
+      if(result>maxY)maxY=result;
+    }
+  }
+
+  heightGrid={grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW:GRID_RES,cellH:GRID_RES,
+    waterMask,waterLevel,baseTerrain,seaLvl:seaLvl,minY,maxY,innerR,outerR};
+
+  const info=document.getElementById('info');
+  info.textContent=`innerR: ${innerR} | outerR: ${outerR.toFixed(0)} | waterLevel: ${waterLevel} | floor: ${(waterLevel-depth).toFixed(0)} | base: ${baseTerrain} | seaLevel: ${seaLvl} | grid: ${gw}x${gh}`;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function terrainColor(y,minY,maxY,waterMask,waterLevel,showWater){
+  if(waterMask && showWater){
+    // Underwater: depth-based blue gradient
+    const depthFrac=Math.min(1,(waterLevel-y)/Math.max(1,waterLevel-minY));
+    return[lerp(80,20,depthFrac),lerp(140,50,depthFrac),lerp(200,120,depthFrac)];
+  }
+  // Land: elevation-based green-brown
+  const t=Math.min(1,Math.max(0,(y-minY)/(maxY-minY)));
+  if(t<0.3){const f=t/0.3;return[lerp(60,100,f),lerp(90,130,f),lerp(40,55,f)];}
+  if(t<0.7){const f=(t-0.3)/0.4;return[lerp(100,160,f),lerp(130,150,f),lerp(55,70,f)];}
+  const f=(t-0.7)/0.3;return[lerp(160,200,f),lerp(150,180,f),lerp(70,100,f)];
+}
+
+function draw(){
+  if(!heightGrid)return;
+  const cv=document.getElementById('cv');
+  const rect=cv.parentElement.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  cv.width=rect.width*dpr;cv.height=rect.height*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;
+  ctx.fillStyle='#0f1117';ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(viewPanX,viewPanY);
+  ctx.scale(viewZoom,viewZoom);
+  if(currentView==='cross') drawCrossSection(ctx,W,H);
+  else drawTerrain(ctx,W,H);
+  ctx.restore();
+  if(viewZoom!==1||viewPanX!==0||viewPanY!==0){
+    ctx.fillStyle='rgba(15,17,23,0.85)';ctx.strokeStyle='#2a2e3a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(W-130,12,118,26,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#6b7084';ctx.font='11px "Segoe UI",sans-serif';ctx.textAlign='right';
+    ctx.fillText(`${Math.round(viewZoom*100)}%  \u00b7  dbl-click reset`,W-18,30);
+  }
+  if(currentView!=='cross') drawScaleBar(ctx,W,H);
+}
+
+function drawTerrain(ctx,W,H){
+  const{grid,gw,gh,mnX,mnZ,rangeX,rangeZ,cellW,cellH,waterMask,waterLevel,minY,maxY}=heightGrid;
+  const contourInt=gv('contourInterval');
+  const showWater=document.getElementById('showWater').checked;
+  const addContour=currentView==='contour'||currentView==='shaded';
+  const addShade=currentView==='shaded';
+
+  const aspect=gw/gh;
+  let drawW,drawH,drawX,drawY;
+  if(W/H>aspect){drawH=H;drawW=H*aspect;drawX=(W-drawW)/2;drawY=0;}
+  else{drawW=W;drawH=W/aspect;drawX=0;drawY=(H-drawH)/2;}
+
+  const imgData=ctx.createImageData(gw,gh);
+  const data=imgData.data;
+
+  let lx,lz,ly;
+  if(addShade){
+    const az=315*Math.PI/180,alt=45*Math.PI/180;
+    lx=Math.cos(alt)*Math.sin(az);lz=-Math.cos(alt)*Math.cos(az);ly=Math.sin(alt);
+  }
+
+  for(let gz=0;gz<gh;gz++){
+    for(let gx=0;gx<gw;gx++){
+      const i=gz*gw+gx,y=grid[i];
+      const isWater=waterMask[i]===1;
+      let[r,g,b]=terrainColor(y,minY,maxY,isWater&&showWater,waterLevel,showWater);
+
+      if(addContour){
+        const cp=y%contourInt;
+        if(cp<0.5||contourInt-cp<0.5){r=Math.max(0,r-50);g=Math.max(0,g-50);b=Math.max(0,b-50);}
+      }
+      if(addShade&&!isWater){
+        const hL=gx>0?grid[i-1]:y,hR=gx<gw-1?grid[i+1]:y;
+        const hU=gz>0?grid[i-gw]:y,hD=gz<gh-1?grid[i+gw]:y;
+        const dhdx=(hR-hL)/(2*cellW),dhdz=(hD-hU)/(2*cellH);
+        const slope=Math.sqrt(dhdx*dhdx+dhdz*dhdz);
+        const steepness=Math.min(1,slope*0.3);
+        const nx=-dhdx,nz=-dhdz,ny=1;
+        const len=Math.sqrt(nx*nx+ny*ny+nz*nz);
+        const dot=(nx*lx+ny*ly+nz*lz)/len;
+        const rawShade=0.35+0.65*Math.max(0,dot);
+        const shade=1-steepness*(1-rawShade);
+        r=Math.min(255,r*shade);g=Math.min(255,g*shade);b=Math.min(255,b*shade);
+      }
+      data[i*4]=r;data[i*4+1]=g;data[i*4+2]=b;data[i*4+3]=255;
+    }
+  }
+
+  const off=document.createElement('canvas');off.width=gw;off.height=gh;
+  const octx=off.getContext('2d');octx.putImageData(imgData,0,0);
+  ctx.imageSmoothingEnabled=false;ctx.drawImage(off,drawX,drawY,drawW,drawH);
+}
+
+// ============================================================
+// Cross-section view — slice through center (Z=0)
+// Shows rock surface, water level, base terrain, and sea level
+// ============================================================
+function drawCrossSection(ctx,W,H){
+  const{grid,gw,gh,mnX,mnZ,rangeX,cellW,waterLevel,baseTerrain,seaLvl,minY,maxY,innerR,outerR}=heightGrid;
+  const showWater=document.getElementById('showWater').checked;
+
+  const margin=60;
+  const plotW=W-margin*2, plotH=H-margin*2;
+  const centerRow=Math.floor(gh/2);
+
+  // Y range with padding
+  const yLo=Math.floor(minY-5), yHi=Math.ceil(maxY+10);
+  const yRange=yHi-yLo;
+
+  // Transform functions
+  const tx=gx=>margin+(gx/gw)*plotW;
+  const ty=y=>margin+plotH-(y-yLo)/yRange*plotH;
+
+  // Background
+  ctx.fillStyle='#0f1117';ctx.fillRect(0,0,W,H);
+
+  // Grid lines
+  ctx.strokeStyle='#1a1d27';ctx.lineWidth=0.5;
+  for(let y=Math.ceil(yLo/10)*10;y<=yHi;y+=10){
+    ctx.beginPath();ctx.moveTo(margin,ty(y));ctx.lineTo(W-margin,ty(y));ctx.stroke();
+  }
+
+  // Sea level line
+  ctx.strokeStyle='rgba(60,120,200,0.4)';ctx.lineWidth=1;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(margin,ty(seaLvl));ctx.lineTo(W-margin,ty(seaLvl));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(60,120,200,0.5)';ctx.font='10px "Segoe UI",sans-serif';ctx.textAlign='left';
+  ctx.fillText(`seaLevel ${seaLvl}`,W-margin+4,ty(seaLvl)+3);
+
+  // Base terrain line
+  ctx.strokeStyle='rgba(120,160,80,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(margin,ty(baseTerrain));ctx.lineTo(W-margin,ty(baseTerrain));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(120,160,80,0.5)';
+  ctx.fillText(`base ${baseTerrain}`,W-margin+4,ty(baseTerrain)+3);
+
+  // Water level line
+  ctx.strokeStyle='rgba(60,180,255,0.6)';ctx.lineWidth=1.5;ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(margin,ty(waterLevel));ctx.lineTo(W-margin,ty(waterLevel));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(60,180,255,0.7)';
+  ctx.fillText(`waterLevel ${waterLevel}`,W-margin+4,ty(waterLevel)+3);
+
+  // Water fill (translucent blue below water level)
+  if(showWater){
+    ctx.beginPath();
+    let inWater=false;
+    for(let gx=0;gx<gw;gx++){
+      const y=grid[centerRow*gw+gx];
+      if(y<waterLevel&&gx>0){
+        if(!inWater){ctx.moveTo(tx(gx),ty(waterLevel));inWater=true;}
+        ctx.lineTo(tx(gx),ty(y));
+      } else if(inWater){
+        ctx.lineTo(tx(gx),ty(waterLevel));
+        inWater=false;
+      }
+    }
+    if(inWater) ctx.lineTo(tx(gw-1),ty(waterLevel));
+    ctx.closePath();
+    ctx.fillStyle='rgba(40,120,200,0.25)';ctx.fill();
+  }
+
+  // Rock surface
+  ctx.beginPath();
+  ctx.moveTo(tx(0),ty(grid[centerRow*gw]));
+  for(let gx=1;gx<gw;gx++){
+    ctx.lineTo(tx(gx),ty(grid[centerRow*gw+gx]));
+  }
+  ctx.strokeStyle='#c8ccd8';ctx.lineWidth=2;ctx.stroke();
+
+  // Fill below rock surface
+  ctx.beginPath();
+  ctx.moveTo(tx(0),ty(grid[centerRow*gw]));
+  for(let gx=1;gx<gw;gx++) ctx.lineTo(tx(gx),ty(grid[centerRow*gw+gx]));
+  ctx.lineTo(tx(gw-1),ty(yLo));ctx.lineTo(tx(0),ty(yLo));ctx.closePath();
+  ctx.fillStyle='rgba(100,80,60,0.2)';ctx.fill();
+
+  // Y axis labels
+  ctx.fillStyle='#6b7084';ctx.font='9px "Segoe UI",sans-serif';ctx.textAlign='right';
+  for(let y=Math.ceil(yLo/10)*10;y<=yHi;y+=10){
+    ctx.fillText(y+'',margin-6,ty(y)+3);
+  }
+
+  // X axis labels (distance from center)
+  ctx.textAlign='center';
+  const blocksRange=gw*GRID_RES;
+  for(let b=-Math.floor(blocksRange/2);b<=Math.floor(blocksRange/2);b+=50){
+    const gx=(b-mnX)/GRID_RES;
+    if(gx>=0&&gx<gw) ctx.fillText(b+'',tx(gx),H-margin+16);
+  }
+
+  // Labels
+  ctx.fillStyle='#6b7084';ctx.font='10px "Segoe UI",sans-serif';ctx.textAlign='center';
+  ctx.fillText('Distance from center (blocks)',W/2,H-12);
+  ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('Y level (blocks)',0,0);ctx.restore();
+}
+
+function drawScaleBar(ctx,W,H){
+  if(!heightGrid)return;
+  const{gw,gh,rangeX}=heightGrid;
+  const aspect=gw/gh;
+  let drawW;if(W/H>aspect)drawW=H*aspect;else drawW=W;
+  const ppb=(drawW/rangeX)*viewZoom;
+  const segBlocks=50,numSegs=5;
+  const segPx=segBlocks*ppb,totalPx=numSegs*segPx;
+  const margin=20,barH=8;
+  const barX=W-margin-totalPx,barY=H-margin-barH-14;
+  ctx.fillStyle='rgba(15,17,23,0.85)';ctx.strokeStyle='#2a2e3a';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(barX-8,barY-14,totalPx+16,barH+30,4);ctx.fill();ctx.stroke();
+  for(let i=0;i<numSegs;i++){
+    ctx.fillStyle=i%2===0?'#c8ccd8':'#4a4e5a';
+    ctx.fillRect(barX+i*segPx,barY,segPx,barH);
+  }
+  ctx.strokeStyle='#6b7084';ctx.lineWidth=0.5;ctx.strokeRect(barX,barY,totalPx,barH);
+  ctx.fillStyle='#6b7084';ctx.font='9px "Segoe UI",sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=numSegs;i++) ctx.fillText(i*segBlocks+'',barX+i*segPx,barY+barH+10);
+}
+
+function resetView(){viewZoom=1;viewPanX=0;viewPanY=0;draw();}
+
+function initPanZoom(){
+  const cv=document.getElementById('cv');
+  let raf=null;
+  function schedDraw(){if(!raf)raf=requestAnimationFrame(()=>{raf=null;draw();});}
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const factor=e.deltaY<0?1.18:1/1.18;
+    const nz=Math.max(0.25,Math.min(40,viewZoom*factor));
+    viewPanX=mx-(mx-viewPanX)*(nz/viewZoom);viewPanY=my-(my-viewPanY)*(nz/viewZoom);
+    viewZoom=nz;schedDraw();
+  },{passive:false});
+  cv.addEventListener('mousedown',e=>{if(e.button===0){isDragging=true;dragStartX=e.clientX-viewPanX;dragStartY=e.clientY-viewPanY;cv.style.cursor='grabbing';}});
+  window.addEventListener('mousemove',e=>{if(!isDragging)return;viewPanX=e.clientX-dragStartX;viewPanY=e.clientY-dragStartY;schedDraw();});
+  window.addEventListener('mouseup',()=>{if(isDragging){isDragging=false;document.getElementById('cv').style.cursor='grab';}});
+  cv.addEventListener('dblclick',()=>resetView());
+  cv.style.cursor='grab';
+}
+
+const displaySliders=['contourInterval'];
+
+window.addEventListener('load',()=>{
+  loadSettings();
+  document.querySelectorAll('input[type="range"]').forEach(s=>{
+    const n=document.getElementById(s.id+'_n');
+    if(!n)return;
+    if(s.step)n.step=s.step;
+    syncSliderToNumber(s);
+    s.addEventListener('input',()=>{
+      syncSliderToNumber(s);
+      if(displaySliders.includes(s.id)){draw();}
+      else{if(terrainRAF)return;terrainRAF=requestAnimationFrame(()=>{terrainRAF=null;computeHeightGrid();draw();});}
+    });
+    s.addEventListener('change',()=>{
+      syncSliderToNumber(s);
+      if(!displaySliders.includes(s.id))computeHeightGrid();
+      draw();saveSettings();
+    });
+    n.addEventListener('change',()=>{syncNumberToSlider(n);computeHeightGrid();draw();saveSettings();});
+  });
+  document.querySelectorAll('input[type="checkbox"]').forEach(s=>s.addEventListener('change',()=>{draw();saveSettings();}));
+  initPanZoom();
+  computeHeightGrid();
+  draw();
+});
+window.addEventListener('resize',()=>draw());
+</script>
+</body>
+</html>
