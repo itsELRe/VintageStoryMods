@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Continent Visualiser</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;display:flex;height:100vh;overflow:hidden}
+.panel{width:340px;min-width:260px;max-width:600px;background:#16213e;display:flex;flex-direction:column;flex-shrink:0;position:relative;overflow-x:hidden}
+.panel-resizer{position:absolute;top:0;right:0;width:6px;height:100%;cursor:ew-resize;background:transparent;z-index:20}
+.panel-resizer:hover,.panel-resizer.dragging{background:rgba(100,255,218,0.35)}
+.panel h2{color:#64ffda;font-size:14px;margin-bottom:2px;padding:10px 10px 0 10px}
+.panel .subtitle{font-size:12px;color:#666;margin-bottom:8px;padding:0 10px}
+.scroll-area{flex:1;overflow-y:auto;padding:0 10px 10px 10px;min-width:0;min-height:0}
+.section{margin-bottom:6px;border-bottom:1px solid #333;padding-bottom:5px}
+.section h3{color:#64ffda;font-size:13px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.row{display:flex;align-items:center;margin-bottom:2px;gap:4px;min-width:0}
+.row label{font-size:12px;color:#aaa;width:105px;flex-shrink:0}
+.row label.vanilla{font-weight:bold;font-style:italic;color:#cfe3ff}
+.toggle-row label.vanilla{font-weight:bold;font-style:italic;color:#cfe3ff}
+.row input[type=range]{flex:1;accent-color:#64ffda;height:12px;min-width:50px}
+.row .val{font-size:12px;color:#64ffda;min-width:38px;text-align:right;flex-shrink:0;font-family:monospace}
+.row input[type=number]{background:#2a2a4a;color:#e0e0e0;border:1px solid #444;padding:1px 3px;border-radius:3px;width:65px;font-size:12px;text-align:right}
+.row input[type=text]{min-width:0}
+.row select{background:#2a2a4a;color:#e0e0e0;border:1px solid #444;padding:1px 3px;border-radius:3px;font-size:12px;flex:1 1 0;min-width:0;max-width:100%}
+@media (max-width:640px){
+  body{flex-direction:column}
+  .panel{width:100%!important;max-width:100%;max-height:45vh;min-width:0}
+  .panel-resizer{display:none}
+  .canvas-area{flex:1;min-height:55vh}
+}
+button.gen{background:#64ffda;color:#1a1a2e;border:none;padding:7px 0;border-radius:4px;cursor:pointer;font-weight:bold;width:100%;margin-top:5px;font-size:11px}
+button.gen:hover{background:#52e0c4}
+.info{background:#0d1525;border-radius:4px;padding:4px;margin-top:5px;font-size:11px;color:#888;line-height:1.4}
+.info b{color:#aaa}
+.toggle-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:12px;cursor:pointer}
+.toggle-row input{accent-color:#64ffda}
+.radio-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:12px;cursor:pointer}
+.radio-row input{accent-color:#64ffda}
+.action-bar{border-top:1px solid #333;padding:8px 10px 4px 10px;background:#16213e;flex-shrink:0}
+.display-fixed{border-top:1px solid #333;padding:8px 10px;background:#16213e;flex-shrink:0}
+.display-fixed h3{color:#64ffda;font-size:13px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.selector-box{height:24vh;min-height:50px;overflow-y:auto}
+.marker-box{height:16vh;min-height:40px;overflow-y:auto}
+.h-resizer{height:6px;cursor:ns-resize;background:transparent;flex-shrink:0}
+.h-resizer:hover,.h-resizer.dragging{background:rgba(100,255,218,0.35)}
+.info-fixed{flex-shrink:0;padding:2px 10px 0 10px}
+.canvas-area{flex:1;position:relative;background:#0a0a1a;overflow:hidden;cursor:grab}
+.canvas-area.dragging{cursor:grabbing}
+.canvas-area canvas{position:absolute;top:0;left:0;image-rendering:pixelated}
+.hover-info{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);padding:3px 8px;font-size:12px;font-family:monospace;color:#aaa;z-index:5;line-height:1.4}
+.hover-info .line2{color:#8ac0e8;min-height:1em}
+.hover-tip{position:fixed;pointer-events:none;background:rgba(20,20,30,0.92);color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:11px;font-family:monospace;border:1px solid rgba(150,180,220,0.5);z-index:999;white-space:nowrap;display:none}
+.zoom-info{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);padding:3px 6px;border-radius:4px;font-size:12px;color:#aaa;z-index:5}
+.legend{position:absolute;top:6px;left:6px;background:rgba(240,240,240,0.95);padding:8px 10px;border-radius:6px;font-size:11px;display:flex;gap:12px;z-index:5;color:#222}
+.legend-col{display:flex;flex-direction:column;gap:3px}
+.legend-item{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.legend-swatch{width:14px;height:10px;border:1px solid #999;border-radius:2px}
+.legend-line{width:18px;height:0;border-radius:1px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="panel" id="leftPanel">
+  <div class="panel-resizer" id="panelResizer"></div>
+  <h2>Continent Visualiser</h2>
+
+  <div class="scroll-area">
+    <p class="subtitle" style="padding:0;margin-bottom:8px"><b><i style="color:#cfe3ff">Bold italic</i></b> = VS vanilla knob. Regular = custom mod knob. Hover any label for details.</p>
+
+    <!-- ===== GAME SETTINGS ===== -->
+    <div class="section">
+      <h3>World Settings</h3>
+      <div class="row"><label class="vanilla" title="Random seed. Same seed + same parameters = identical world. Text is hashed to int.">Seed</label><input type="text" id="seed" value="42" style="min-width:0;flex:1"></div>
+      <div class="row"><label class="vanilla" title="Map width in pixels. 1 pixel = 32 blocks in-game.">Map Width</label><input type="number" id="mapW" value="512" min="64" max="8000" step="64"><span class="val" style="font-size:11px" id="mapWBlk">16k blk</span></div>
+      <div class="row"><label class="vanilla" title="Map height in pixels. 1 pixel = 32 blocks in-game.">Map Height</label><input type="number" id="mapH" value="512" min="64" max="8000" step="64"><span class="val" style="font-size:11px" id="mapHBlk">16k blk</span></div>
+      <div class="row"><label class="vanilla" title="World height in blocks (vertical extent). VS default 256; taller worlds give more room for mountains and oceans.">World Height</label><input type="number" id="worldHeight" value="320" min="128" max="512" step="8"><span class="val" style="font-size:11px" id="worldHeightV">320 blk</span></div>
+      <div class="row"><label class="vanilla" title="Pixel distance from equator to pole (VS polarEquatorDistance ÷32). Smaller = sharper latitude bands (tight hot/cold); larger = gentle gradients.">Polar Distance</label><input type="number" id="polarDist" value="256" min="16" max="8000" step="16"><span class="val" style="font-size:11px" id="polarDistBlk">8k blk</span></div>
+      <div class="row"><label class="vanilla" title="Target fraction of the map covered by land.">Land Cover</label><input type="range" id="landcover" min="0.10" max="1.00" step="0.01" value="0.60"><span class="val" id="landcoverV">0.60</span></div>
+      <div class="row"><label class="vanilla" title="Continent density. 0.1 = many small islands; 5.0 = one giant continent. Disabled when Seeds Override > 0.">Landcover Scale</label><input type="range" id="landcoverScale" min="0.10" max="5.00" step="0.10" value="1.00"><span class="val" id="landcoverScaleV">1.00</span></div>
+      <div class="row"><label class="vanilla" title="Global temperature multiplier (VS globalTemperature). Scales every point's temperature byte: &gt;1 hotter, &lt;1 cooler.">Global Temperature</label><input type="range" id="globalTemperature" min="0.5" max="2.0" step="0.05" value="1.00"><span class="val" id="globalTemperatureV">1.00</span></div>
+      <div class="row"><label class="vanilla" title="Global precipitation multiplier (VS globalPrecipitation). Scales every point's rainfall byte: &gt;1 wetter, &lt;1 drier.">Global Precipitation</label><input type="range" id="globalPrecipitation" min="0" max="2.0" step="0.05" value="1.00"><span class="val" id="globalPrecipitationV">1.00</span></div>
+    </div>
+
+    <!-- ===== TECTONIC PLATES ===== -->
+    <div class="section">
+      <h3>Tectonic Plates</h3>
+      <div class="row"><label title="Average plate size. Larger = fewer, bigger plates; smaller = many small plates.">Continent Size</label><input type="range" id="continentSize" min="0.3" max="3.0" step="0.1" value="1.0"><span class="val" id="continentSizeV">1.00</span></div>
+      <div class="row"><label title="Multiplier on the derived plate count. Higher = more, smaller plates. Clamped to ≥2.">Plate Count ×</label><input type="range" id="plateCountMult" min="0.5" max="4.0" step="0.1" value="1.0"><span class="val" id="plateCountMultV">1.00</span></div>
+      <div class="row"><label title="How far each PLATE seed drifts from its grid cell centre. 0 = perfectly regular plate grid; 1 = chaotic. (Plates only — the data lattice below is always perfectly regular.)">Plate Jitter</label><input type="range" id="seedJitter" min="0.0" max="1.0" step="0.05" value="0.70"><span class="val" id="seedJitterV">0.70</span></div>
+      <div class="row"><label title="Strength of the organic warp applied to plate boundaries. 0 = straight Voronoi lines; higher = more curved.">Warp Power</label><input type="range" id="warpPower" min="0" max="0.5" step="0.02" value="0.12"><span class="val" id="warpPowerV">0.12</span></div>
+      <div class="row"><label title="Minimum plate drift speed (seed-random per plate). Lower end of the collision-intensity speed spread.">Plate Speed Min</label><input type="range" id="plateSpeedMin" min="0" max="1.0" step="0.05" value="0.30"><span class="val" id="plateSpeedMinV">0.30</span></div>
+      <div class="row"><label title="Maximum plate drift speed. Upper end of the spread; faster plates read modestly taller (sublinear).">Plate Speed Max</label><input type="range" id="plateSpeedMax" min="0.5" max="2.0" step="0.05" value="1.00"><span class="val" id="plateSpeedMaxV">1.00</span></div>
+      <div class="row"><label title="|cos(relative motion, boundary)| below this = transform (glancing) boundary. Higher = more transforms, fewer mountains/rifts.">Transform Threshold</label><input type="range" id="transformThreshold" min="0" max="1.0" step="0.05" value="0.30"><span class="val" id="transformThresholdV">0.30</span></div>
+    </div>
+
+    <!-- ===== DATA LATTICE ===== -->
+    <div class="section">
+      <h3>Data Lattice</h3>
+      <div class="row"><label title="Multiplier on the auto-calibrated spacing of the triangular data-point lattice (base spacing derives from map size and continent size). Below 1 = denser points: finer terrain/wind/climate resolution, slower generation. Above 1 = sparser, chunkier data. The lattice itself is always perfectly regular — points never move.">Lattice Spacing ×</label><input type="range" id="latticeSpacing" min="0.5" max="2.0" step="0.05" value="1.00"><span class="val" id="latticeSpacingV">1.00</span></div>
+    </div>
+
+    <!-- ===== TECTONIC PROVINCES ===== -->
+    <div class="section">
+      <h3>Tectonic Provinces</h3>
+      <div class="row"><label title="Width of the active-boundary orogen (mountain) band, in pixels (×scale×activity).">Orogen Width</label><input type="range" id="orogenWidth" min="2" max="20" step="0.5" value="8"><span class="val" id="orogenWidthV">8.0</span></div>
+      <div class="row"><label title="Width of the extended-crust band along divergent active boundaries (rifts), in base pixels (× scale × activity × widthMul). Replaces orogen on divergent lines. Breathes along the line via the same widthMul as orogen so the rift band joins cleanly at junctions where divergent meets convergent.">Extended Crust Width</label><input type="range" id="extendedCrustWidth" min="0" max="30" step="0.5" value="6"><span class="val" id="extendedCrustWidthV">6.0</span></div>
+      <div class="row"><label title="Width of the basin (foothill) band ringing the orogen.">Basin Width</label><input type="range" id="basinWidth" min="1" max="16" step="0.5" value="6"><span class="val" id="basinWidthV">6.0</span></div>
+      <div class="row"><label title="Width of the fossil-boundary orogen band (older, eroded peaks inside a plate).">Fossil Width</label><input type="range" id="fossilWidth" min="1" max="12" step="0.5" value="4"><span class="val" id="fossilWidthV">4.0</span></div>
+      <div class="row"><label title="Width of the platform (broad sedimentary interior) band.">Platform Width</label><input type="range" id="platformWidth" min="5" max="60" step="1" value="25"><span class="val" id="platformWidthV">25</span></div>
+      <div class="row"><label title="Province width warp. Smooth scalar field that scales ALL band widths together at each pixel — proportions preserved (no rotation, no choking). Provinces and upheaval both consume it. 0 = uniform widths; 1.0 = max widthMul ×1.5; 2.0 = max widthMul ×2.0 (band width can double at noise peaks).">Province Warp</label><input type="range" id="provinceWarpPower" min="0.0" max="2.0" step="0.05" value="0.60"><span class="val" id="provinceWarpPowerV">0.60</span></div>
+      <div class="row"><label title="Minimum band-width fraction at ~zero collision intensity, so no band ever vanishes. A glancing line pinches toward this; 0 = bow-tie waist.">Width Floor</label><input type="range" id="widthFloor" min="0" max="0.5" step="0.05" value="0.15"><span class="val" id="widthFloorV">0.15</span></div>
+      <div class="row"><label title="Basin band width on fossil (old, intra-plate) boundaries. Narrower than active — fossils are more eroded.">Fossil Basin Width</label><input type="range" id="fossilBasinWidth" min="1" max="12" step="0.5" value="4"><span class="val" id="fossilBasinWidthV">4.0</span></div>
+      <div class="row"><label title="Platform band width on fossil boundaries. Narrower than active.">Fossil Platform Width</label><input type="range" id="fossilPlatformWidth" min="5" max="30" step="1" value="12"><span class="val" id="fossilPlatformWidthV">12</span></div>
+    </div>
+
+    <!-- ===== CONTINENTAL PRIMITIVES ===== -->
+    <div class="section">
+      <h3>Continental Primitives</h3>
+      <div class="row"><label title="Force the exact number of continent seeds. 0 = use Landcover Scale; any positive number overrides LCS.">Seeds Override</label><input type="number" id="seedOverride" min="0" max="200" step="1" value="0"><span class="val" style="font-size:11px" id="seedOverrideV">off</span></div>
+      <div class="row"><label title="Variation in continent sizes. Higher = mix of very large and very small continents.">Size Variation</label><input type="range" id="sizeVar" min="0" max="1.0" step="0.05" value="0.50"><span class="val" id="sizeVarV">0.50</span></div>
+      <div class="row"><label title="Growth bias toward continental plates — bonus for faces on continental plates AND a penalty for faces on oceanic plates. 0 = plates ignored; 1 = moderate hugging; 2 = continents strongly follow their plate outlines.">Plate Bias</label><input type="range" id="plateBias" min="0" max="2.0" step="0.1" value="1.0"><span class="val" id="plateBiasV">1.00</span></div>
+      <div class="row"><label title="Separation pressure between continents, graded by distance: touching a foreign continent is penalized far harder than being two faces away. At 1.5+ sharing an edge with a foreign continent is fully vetoed — a strait of at least one ocean face is guaranteed. 0 = continents may merge.">Separation</label><input type="range" id="separationBias" min="0" max="2.0" step="0.1" value="1.0"><span class="val" id="separationBiasV">1.00</span></div>
+      <div class="row"><label title="Penalty for growing near the map border, fading smoothly from the border outward (no hard cutoff line for the coast to trace). Higher = wider and deeper avoidance zone. 0 = land may reach the map edge.">Edge Avoidance</label><input type="range" id="edgeBias" min="0" max="2.0" step="0.1" value="1.0"><span class="val" id="edgeBiasV">1.00</span></div>
+      <div class="row"><label title="How aggressively holes and jagged coast are closed. Scores enclosed faces and notches up during growth, then runs cleanup: round(value) coast-closing passes (fill 2-land-edge notches, shave 2-ocean-edge teeth) and enclosed-pocket landfill (single-owner pockets up to 8×value faces). 0 = raw growth, no cleanup; 2 = hole-free, smooth multi-triangle coast.">Gap Fill</label><input type="range" id="gapFill" min="0" max="2.0" step="0.1" value="1.0"><span class="val" id="gapFillV">1.00</span></div>
+    </div>
+
+    <!-- ===== EMERGENT COASTLINE ===== -->
+    <div class="section">
+      <h3>Emergent Coastline</h3>
+      <div class="row"><label title="Amplitude of the emergent coast noise, in lattice-spacing units. The Detailed coastline is the zero-crossing of (signed distance to the faceted primitive coast) + noise × amplitude — bays, inlets and islets emerge per column, nothing is stored or warped. 0 = the faceted primitive coast; 0.45 = approved look; hard safety bound ≈0.87 (beyond it a data point could end up on the wrong side).">Coast Amplitude</label><input type="range" id="coastAmplitude" min="0" max="0.8" step="0.05" value="0.45"><span class="val" id="coastAmplitudeV">0.45</span></div>
+      <div class="row"><label title="Blend weight of the coarse noise stack (wavelength 3.5× lattice spacing — makes whole coast edges swing together) versus the fine stack (1.0×). 0 = fine only, the approved look. Raise only if lattice rhythm ever shows through the coastline.">Coast Coarse Blend</label><input type="range" id="coastCoarseBlend" min="0" max="1.0" step="0.05" value="0.00"><span class="val" id="coastCoarseBlendV">0.00</span></div>
+    </div>
+
+    <!-- ===== UPHEAVAL ===== -->
+    <div class="section">
+      <h3>Upheaval</h3>
+      <div class="row"><label title="Land base height plateau (fraction of the byte range) reached inland before tectonic uplift — the raised-plain level away from mountains.">Land Base Cap</label><input type="range" id="landBaseCap" min="0" max="1.0" step="0.05" value="0.40"><span class="val" id="landBaseCapV">0.40</span></div>
+      <div class="row"><label title="Ocean base depth plateau (fraction of the byte range) reached in the deep sea before trench deepening.">Ocean Base Cap</label><input type="range" id="oceanBaseCap" min="0" max="1.0" step="0.05" value="0.50"><span class="val" id="oceanBaseCapV">0.50</span></div>
+      <div class="row"><label title="Coast distance (fraction of map size) over which the base rises/deepens from coast to its plateau cap.">Base Rise</label><input type="range" id="baseRiseFrac" min="0.1" max="1.0" step="0.05" value="0.35"><span class="val" id="baseRiseFracV">0.35</span></div>
+      <div class="row"><label title="Weight of tectonic uplift/rifting on top of the base. Higher = taller mountains and deeper trenches vs the base plateau.">Tect Weight</label><input type="range" id="tectWeight" min="0" max="2.0" step="0.05" value="1.00"><span class="val" id="tectWeightV">1.00</span></div>
+      <div class="row"><label title="How much fossil (old) boundaries contribute to height vs active ones. Fossils are discounted — age lives in height, not in width/category.">Fossil Weight</label><input type="range" id="terrainFossilWeight" min="0" max="1.0" step="0.05" value="0.60"><span class="val" id="terrainFossilWeightV">0.60</span></div>
+      <div class="row"><label title="Amplitude of the coherent per-point height wiggle. Breaks flat plateaus so water has a downhill; kept well below real relief.">Variance Amp</label><input type="range" id="terrainVarAmp" min="0" max="0.3" step="0.01" value="0.10"><span class="val" id="terrainVarAmpV">0.10</span></div>
+      <div class="row"><label title="Wavelength (fraction of map size) of the coherent height variance. Smaller = finer wiggle.">Variance Scale</label><input type="range" id="terrainVarScaleFrac" min="0.05" max="0.3" step="0.01" value="0.12"><span class="val" id="terrainVarScaleFracV">0.12</span></div>
+    </div>
+
+    <!-- ===== OCEAN ===== -->
+    <div class="section">
+      <h3>Ocean</h3>
+      <div class="row"><label title="How far from the shore the seabed reaches full shelf depth, as a multiple of the coast band. 1.0 = the whole band. Computed per pixel from the warped coastline, so water narrower than the data lattice still gets a real seabed. Above 1.0 the shelf keeps ramping but stops short of full depth by the band's edge — the lattice supplies the rest.">Shelf Reach</label><input type="range" id="shelfReach" min="0.1" max="2.0" step="0.05" value="1.00"><span class="val" id="shelfReachV">1.00</span></div>
+      <div class="row"><label title="The shelf's depth at its outer edge, as a fraction of the byte range. This is a FLOOR: the data-point (lattice) bathymetry — trenches, rifts, basins — is layered on top of it and keeps its full relief at any setting. 0 = lattice only.">Shelf Depth</label><input type="range" id="shelfDepth" min="0" max="1.0" step="0.05" value="0.25"><span class="val" id="shelfDepthV">0.25</span></div>
+    </div>
+
+    <!-- ===== CLIMATE ===== -->
+    <div class="section">
+      <h3>Climate</h3>
+      <div class="row"><label title="Latitude (normalised 0–1) where the hot/wet equatorial plateau ends. Smaller = narrower tropical band per hemisphere; larger = wider. The mirrored band across the equator means total tropical coverage is roughly 2× this value.">Tropical Edge</label><input type="range" id="climateTropicalEnd" min="0.10" max="0.35" step="0.01" value="0.20"><span class="val" id="climateTropicalEndV">0.20</span></div>
+      <div class="row"><label title="Latitude (normalised 0–1) where the temperate plateau ends and the polar dry/cold zone begins. Larger = wider temperate band per hemisphere; smaller = larger polar zone.">Polar Edge</label><input type="range" id="climateTemperateEnd" min="0.50" max="0.90" step="0.01" value="0.70"><span class="val" id="climateTemperateEndV">0.70</span></div>
+      <div class="row"><label title="Per-point character variation (deterministic hash on pointId+seed). 0 = adjacent data points at the same effective latitude read identical; 1 = default ±5/±10 byte jitter; 2 = double.">Variation</label><input type="range" id="climateVariation" min="0" max="2.0" step="0.05" value="1.00"><span class="val" id="climateVariationV">1.00</span></div>
+      <div class="row"><label title="How much distance-from-coast cools and dries a point (continental interiors are more extreme). 0 = maritime everywhere.">Continentality</label><input type="range" id="continentalityStrength" min="0" max="1.0" step="0.01" value="0.23"><span class="val" id="continentalityStrengthV">0.23</span></div>
+      <div class="row"><label title="How much warm/cold ocean currents nudge coastal temperature.">Current Influence</label><input type="range" id="currentInfluence" min="0" max="0.5" step="0.01" value="0.10"><span class="val" id="currentInfluenceV">0.10</span></div>
+      <div class="row"><label title="Extra rain on windward mountain slopes (air forced up cools and drops moisture).">Orographic Boost</label><input type="range" id="orographicBoost" min="0" max="0.5" step="0.01" value="0.20"><span class="val" id="orographicBoostV">0.20</span></div>
+      <div class="row"><label title="Drying on the leeward side of mountains (the rain-shadow desert effect).">Rain Shadow</label><input type="range" id="rainShadowStrength" min="0" max="1.0" step="0.01" value="0.30"><span class="val" id="rainShadowStrengthV">0.30</span></div>
+      <div class="row"><label title="Extra moisture where onshore wind meets a coast.">Windward Bonus</label><input type="range" id="windwardBonusStrength" min="0" max="0.5" step="0.01" value="0.15"><span class="val" id="windwardBonusStrengthV">0.15</span></div>
+      <div class="row"><label title="Per-point temperature jitter (× Variation). Small deterministic noise so neighbouring points aren't identical.">Temp Jitter</label><input type="range" id="tempJitter" min="0" max="0.1" step="0.005" value="0.040"><span class="val" id="tempJitterV">0.040</span></div>
+      <div class="row"><label title="Per-point rainfall jitter (× Variation).">Rain Jitter</label><input type="range" id="rainJitter" min="0" max="0.2" step="0.01" value="0.08"><span class="val" id="rainJitterV">0.08</span></div>
+    </div>
+
+    <!-- ===== RIDGES ===== -->
+    <div class="section">
+      <h3>Ridges</h3>
+      <div class="row"><label title="Grid cell size for anchor scatter (pixels). Smaller = more anchors, smaller per-network spread (maxSpread auto-derives from spacing). Larger = fewer, larger networks.">Spacing</label><input type="range" id="ridgeSpacing" min="20" max="150" step="5" value="60"><span class="val" id="ridgeSpacingV">60</span></div>
+      <div class="row"><label title="Per-cell jitter, fraction of cell size. 0 = perfectly regular grid. 0.7 = default — anchors scatter within their cells with some inter-cell mixing. 1.0 = anchor can land anywhere within ±half-cell of cell centre. High jitter + min-distance padding can drop some anchors → density falls slightly.">Jitter</label><input type="range" id="ridgeJitter" min="0.0" max="1.0" step="0.05" value="0.70"><span class="val" id="ridgeJitterV">0.70</span></div>
+      <div class="row"><label title="Per-anchor shape variation. Each anchor gets a random elongation axis + strength (deterministic from seed). 0 = all networks circular (radial growth). 0.4 = default — moderate variety, some networks oval. 1.0 = max variety, strongest elongation (long axis ~1.5×, short axis ~0.5× the base spread).">Shape Variation</label><input type="range" id="ridgeShapeVariation" min="0.0" max="1.0" step="0.05" value="0.40"><span class="val" id="ridgeShapeVariationV">0.40</span></div>
+      <div class="row"><label title="Per-network maximum spread multiplier on the auto-derived maxSpread (= spacing × 0.8 at 1.0). 0.5 = networks reach half as far from their anchor. 1.0 = current default. 2.0 = networks reach twice as far. Anchor density is unchanged (controlled by Spacing); this only changes how far each network grows from its seed.">Spread</label><input type="range" id="ridgeSpread" min="0.5" max="2.0" step="0.05" value="1.00"><span class="val" id="ridgeSpreadV">1.00</span></div>
+    </div>
+
+    <!-- ===== LAKES ===== -->
+    <div class="section">
+      <h3>Lakes</h3>
+      <div class="row"><label title="Lake density. Multiplier on the score threshold a candidate must clear to become a lake. 0 = no lakes (slider inert). 1.0 = default population. 2.0 = roughly double — more candidates pass the threshold. Lakes are placed on shield province only, scored by net water balance (rainfall − evaporation from temp) × coast-distance weight.">Density</label><input type="range" id="lakeDensity" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="lakeDensityV">1.00</span></div>
+    </div>
+
+    <!-- ===== RIVERS ===== -->
+    <div class="section">
+      <h3>Rivers</h3>
+      <div class="row"><label title="Spring density. Hex-packed grid of springs inside the platform spring band (between basin and shield, biased shield-side); this slider scales the grid spacing (inverse, so higher = denser). Affects SPRINGS only — ends are structural (every coastal ocean polygon gets one; every lake gets one) and always present regardless of this slider. 0 = no springs. 1.0 = default. 2.0 = roughly double density.">Points</label><input type="range" id="riverPoints" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="riverPointsV">1.00</span></div>
+      <div class="row"><label title="Spring activation threshold. Each spring scores from its polygon's rainfall (70%) + geo activity (30%); this slider lowers the threshold so more springs activate. 0 = nothing activates (slider inert). 1.0 = default — wet / active areas activate. 2.0 = even arid springs activate. Active springs pair to the nearest end whose straight line doesn't pass through the deflector mask; if every line is blocked, the spring stays active but unconnected (rendered white).">Connections</label><input type="range" id="riverConnections" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="riverConnectionsV">1.00</span></div>
+      <div class="row"><label title="Deflector influence radius (multiplier on the local orogen reach). Each deflector is a circle painted into a composable mask — rivers can't draw their straight line through any painted pixel. Orogen and fossil orogen both contribute circles at fine spacing along their active-segment polylines (fossil uses `fossilW`, smaller). Future primitives (valleys, passes / cheile, canyons) will erase from this mask to let rivers pass through. 0 = no orogen blocking (slider inert). 1.0 = base reach. 2.0 = twice the reach (more blocked).">Deflector Influence</label><input type="range" id="deflectorInfluence" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="deflectorInfluenceV">1.00</span></div>
+      <div class="row"><label title="Climate Influence — multiplier on the rainfall contribution to a spring's activation score. Score = rainNorm × 0.7 × climateInfluence + geoNorm × 0.3 × geoInfluence. 0 = climate ignored (only geo activity drives activation). 1.0 = baseline (rainfall = ~70% of the score by default). 2.0 = climate dominates — wet polygons activate aggressively, dry stay quiet.">Climate Influence</label><input type="range" id="climateInfluence" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="climateInfluenceV">1.00</span></div>
+      <div class="row"><label title="Geo Influence — multiplier on the geo-activity contribution to a spring's activation score. 0 = geo activity ignored (only rainfall drives activation). 1.0 = baseline (geo = ~30% of the score by default). 2.0 = geo dominates — seismically active areas bristle with springs regardless of climate.">Geo Influence</label><input type="range" id="geoInfluence" min="0.0" max="2.0" step="0.05" value="1.00"><span class="val" id="geoInfluenceV">1.00</span></div>
+    </div>
+
+  </div>
+
+  <!-- ===== MAP SELECTORS (resizable via drag bar) ===== -->
+  <div class="h-resizer" data-target="selectorBox"></div>
+  <div class="display-fixed selector-box" id="selectorBox">
+    <h3>Map Display</h3>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDefault" value="default" checked><label for="overlayDefault">Default</label></div>
+
+    <div style="margin-top:6px;margin-bottom:2px;font-size:11px;color:#888">Primitive</div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimOcean" value="primOcean"><label for="overlayPrimOcean">Continent Map</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimProvinces" value="primProvinces"><label for="overlayPrimProvinces">Tectonic Provinces</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimUpheaval" value="primUpheaval"><label for="overlayPrimUpheaval">Upheaval</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimOceanDepth" value="primOceanDepth"><label for="overlayPrimOceanDepth">Ocean Map</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimWind" value="primWind"><label for="overlayPrimWind">Wind</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimCurrents" value="primCurrents"><label for="overlayPrimCurrents">Ocean Currents</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimClimateTemp" value="primClimateTemp"><label for="overlayPrimClimateTemp">Climate — Temperature</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimClimateRain" value="primClimateRain"><label for="overlayPrimClimateRain">Climate — Rainfall</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimClimateGeo" value="primClimateGeo"><label for="overlayPrimClimateGeo">Climate — Geo Activity</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayPrimLandforms" value="primLandforms"><label for="overlayPrimLandforms">Landforms</label></div>
+
+    <div style="margin-top:6px;margin-bottom:2px;font-size:11px;color:#888">Detailed</div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedOcean" value="detailedOcean"><label for="overlayDetailedOcean">Continent Map</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedProvinces" value="detailedProvinces"><label for="overlayDetailedProvinces">Tectonic Provinces</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetUpheaval" value="detUpheaval"><label for="overlayDetUpheaval">Upheaval</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedOceanDepth" value="detailedOceanDepth"><label for="overlayDetailedOceanDepth">Ocean Map</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedWind" value="detailedWind"><label for="overlayDetailedWind">Wind</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedCurrents" value="detailedCurrents"><label for="overlayDetailedCurrents">Ocean Currents</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedClimateTemp" value="detailedClimateTemp"><label for="overlayDetailedClimateTemp">Climate — Temperature</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedClimateRain" value="detailedClimateRain"><label for="overlayDetailedClimateRain">Climate — Rainfall</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedClimateGeo" value="detailedClimateGeo"><label for="overlayDetailedClimateGeo">Climate — Geo Activity</label></div>
+    <div class="radio-row"><input type="radio" name="overlay" id="overlayDetailedLandforms" value="detailedLandforms"><label for="overlayDetailedLandforms">Landforms</label></div>
+  </div>
+
+  <!-- ===== MARKERS (resizable via drag bar) ===== -->
+  <div class="h-resizer" data-target="markerBox"></div>
+  <div class="display-fixed marker-box" id="markerBox">
+    <h3>Markers</h3>
+    <div class="toggle-row"><input type="checkbox" id="showPlates" checked><label for="showPlates">Plate Boundaries</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showFossils" checked><label for="showFossils">Fossil Boundaries</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showHotspots" checked><label for="showHotspots">Hotspots</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showContBounds"><label for="showContBounds">Continent Outlines</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showLattice"><label for="showLattice" title="The triangular data-point lattice as a wireframe; primitive coast segments (edges between a land and an ocean face) highlighted.">Lattice</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showSeeds"><label for="showSeeds" title="The faces where continent BFS growth started.">Continent Seeds</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showAnchors"><label for="showAnchors">Anchors</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showAnchorValues"><label for="showAnchorValues">Anchor Values</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showVectors"><label for="showVectors">Plate Vectors</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showRidges" checked><label for="showRidges">Ridges</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showDrainage"><label for="showDrainage">Drainage Graph</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showRivers" checked><label for="showRivers">Rivers</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showLakes" checked><label for="showLakes">Lakes</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showHydrology"><label for="showHydrology">Hydrology (values)</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showEnclosedShields"><label for="showEnclosedShields">Enclosed Shields</label></div>
+    <div class="toggle-row"><input type="checkbox" id="showSpawn" checked><label for="showSpawn">Spawn Point</label></div>
+  </div>
+
+  <!-- ===== INFO + STATS (fixed, non-resizable, above the buttons) ===== -->
+  <div class="info-fixed">
+    <div class="info"><b>Scroll</b>=zoom <b>Drag</b>=pan <b>DblClick</b>=reset</div>
+    <div class="info" id="statsBox"><b>Stats:</b> —</div>
+  </div>
+
+  <!-- ===== ACTION BAR (buttons, always at the very bottom) ===== -->
+  <div class="action-bar">
+    <button class="gen" id="genBtn">Generate (Enter)</button>
+    <button class="gen" style="background:#ff6b6b;margin-top:2px" onclick="localStorage.clear();location.reload()">Wipeout (clear cache &amp; reload)</button>
+  </div>
+</div>
+
+<div class="canvas-area" id="canvasArea">
+  <canvas id="mainCanvas"></canvas>
+  <canvas id="overlayCanvas"></canvas>
+  <canvas id="highlightCanvas"></canvas>
+  <div class="legend" id="legendBox"></div>
+  <div class="hover-info" id="hoverInfo">
+    <div id="hoverGeneral">Hover over map</div>
+    <div id="hoverSpecific" class="line2"></div>
+  </div>
+  <div class="hover-tip" id="hoverTip"></div>
+  <div class="zoom-info" id="zoomInfo">Zoom: 1.0x</div>
+</div>
+
+<script>
+// Resizable left panel
+(function(){
+  const panel = document.getElementById('leftPanel');
+  const resizer = document.getElementById('panelResizer');
+  if (!panel || !resizer) return;
+
+  // Restore saved width
+  try {
+    const saved = parseInt(localStorage.getItem('iwrw_panel_width'));
+    if (saved && saved >= 260 && saved <= 600) panel.style.width = saved + 'px';
+  } catch (e) {}
+
+  let dragging = false;
+  resizer.addEventListener('mousedown', (e) => {
+    dragging = true;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = panel.getBoundingClientRect();
+    const w = Math.max(260, Math.min(600, e.clientX - rect.left));
+    panel.style.width = w + 'px';
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    try { localStorage.setItem('iwrw_panel_width', parseInt(panel.style.width)); } catch (e) {}
+  });
+})();
+
+// Horizontal drag-bar resizers between the three left-panel scroll sections
+// (params scroll-area / map selectors / markers). Each bar sits above its
+// target box and sets that box's height from the mouse Y; the flexible
+// scroll-area absorbs the rest. Heights persist in localStorage.
+(function(){
+  document.querySelectorAll('.h-resizer').forEach(rz => {
+    const target = document.getElementById(rz.dataset.target);
+    if (!target) return;
+    try { const s = parseInt(localStorage.getItem('iwrw_h_' + rz.dataset.target)); if (s && s >= 40) target.style.height = s + 'px'; } catch (e) {}
+    let dragging = false;
+    rz.addEventListener('mousedown', (e) => {
+      dragging = true; rz.classList.add('dragging');
+      document.body.style.userSelect = 'none'; document.body.style.cursor = 'ns-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const rect = target.getBoundingClientRect();
+      const h = Math.max(40, Math.min(window.innerHeight * 0.7, rect.bottom - e.clientY));
+      target.style.height = h + 'px';
+    });
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false; rz.classList.remove('dragging');
+      document.body.style.userSelect = ''; document.body.style.cursor = '';
+      try { localStorage.setItem('iwrw_h_' + rz.dataset.target, parseInt(target.style.height)); } catch (e) {}
+    });
+  });
+})();
+</script>
+
+<!-- Load order: utilities → models → continent split files (extend prototype) → render/glue -->
+<script src="math.js"></script>
+<script src="geometry.js"></script>
+<script src="tectonic.js"></script>
+<script src="tectonic-lines.js"></script>
+<script src="mesh.js"></script>
+<script src="ocean.js"></script>
+<script src="continent-bfs.js"></script>
+<script src="continent-islands.js"></script>
+<script src="coast-field.js"></script>
+<script src="distance-fields.js"></script>
+<script src="provinces.js"></script>
+<script src="upheaval.js"></script>
+<script src="drainage.js"></script>
+<script src="wind.js"></script>
+<script src="currents.js"></script>
+<script src="climate.js"></script>
+<script src="ridges.js"></script>
+<script src="lakes.js"></script>
+<script src="rivers.js"></script>
+<script src="landforms.js"></script>
+<script src="renderer.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
